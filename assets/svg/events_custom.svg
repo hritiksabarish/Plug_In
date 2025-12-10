@@ -1,0 +1,15 @@
+<svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+  <!-- Calendar grid -->
+  <rect x="30" y="40" width="140" height="130" rx="8" fill="none" stroke="currentColor" stroke-width="8"/>
+  <!-- Top bar for days -->
+  <line x1="30" y1="75" x2="170" y2="75" stroke="currentColor" stroke-width="6"/>
+  <!-- Day labels -->
+  <text x="45" y="65" font-size="16" font-weight="bold" text-anchor="middle" fill="currentColor">S</text>
+  <text x="80" y="65" font-size="16" font-weight="bold" text-anchor="middle" fill="currentColor">M</text>
+  <text x="115" y="65" font-size="16" font-weight="bold" text-anchor="middle" fill="currentColor">W</text>
+  <text x="150" y="65" font-size="16" font-weight="bold" text-anchor="middle" fill="currentColor">F</text>
+  <!-- Event marker dots -->
+  <circle cx="60" cy="105" r="6" fill="currentColor"/>
+  <circle cx="95" cy="130" r="6" fill="currentColor"/>
+  <circle cx="145" cy="155" r="6" fill="currentColor"/>
+</svg>

@@ -1,15 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'attendance_models.dart';
-import 'attendance_record_detail_screen.dart';
+import 'attendance_models.dart'; // <-- MUST import the same shared file
+import 'attendance_record_detail_screen.dart'; 
 
 class AttendanceRecordsScreen extends StatelessWidget {
-  final List<AttendanceRecord> records;
+  final List<AttendanceRecord> records; // <-- This type is now consistent
 
   const AttendanceRecordsScreen({super.key, required this.records});
 
   @override
   Widget build(BuildContext context) {
+    // ... (The rest of this file's code from the previous answer is correct)
     final sortedRecords = records.toList()
       ..sort((a, b) => b.date.compareTo(a.date));
 
@@ -25,41 +26,38 @@ class AttendanceRecordsScreen extends StatelessWidget {
 
   Widget _buildEmptyState(BuildContext context) {
     return const Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(Icons.hourglass_empty, size: 80, color: Colors.grey),
-          SizedBox(height: 20),
-          Text('No attendance records found.', style: TextStyle(fontSize: 18, color: Colors.grey)),
-        ],
-      ),
+      child: Text('No attendance records found.'),
     );
   }
 
-  Widget _buildRecordsList(BuildContext context, List<AttendanceRecord> sortedRecords) {
+  Widget _buildRecordsList(
+      BuildContext context, List<AttendanceRecord> sortedRecords) {
     return ListView.builder(
       itemCount: sortedRecords.length,
       itemBuilder: (context, index) {
         final record = sortedRecords[index];
-        return Card(
-          margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          child: ListTile(
-            leading: CircleAvatar(
-              child: Text((index + 1).toString()),
-            ),
-            title: Text('Record for ${DateFormat.yMMMd().format(record.date)}'),
-            subtitle: Text('${record.presentMembers.length} Present, ${record.absentMembers.length} Absent'),
-            trailing: const Icon(Icons.arrow_forward_ios),
-            onTap: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (context) => AttendanceRecordDetailScreen(record: record),
-                ),
-              );
-            },
-          ),
-        );
+        return _buildRecordItem(context, record);
       },
+    );
+  }
+
+  Widget _buildRecordItem(BuildContext context, AttendanceRecord record) {
+    return Card(
+      margin: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+      child: ListTile(
+        title: Text(DateFormat('yyyy-MM-dd – HH:mm').format(record.date)),
+        subtitle: Text('Status: ${record.status}'),
+        trailing: const Icon(Icons.arrow_forward_ios),
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) =>
+                  AttendanceRecordDetailScreen(record: record),
+            ),
+          );
+        },
+      ),
     );
   }
 }

@@ -1,17 +1,24 @@
 import 'package:app/screens/announcements_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_staggered_animations/flutter_staggered_animations.dart'; 
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:app/screens/settings_screen.dart';
-import 'package:app/services/auth_service.dart';
-import 'package:app/models/user.dart';
+import 'package:app/services/role_database_service.dart';
 import 'dart:ui' show lerpDouble; // For smooth animation interpolation
 import 'dart:math' as math; // For math operations in custom painter
+import 'package:app/services/theme_service.dart';
+import 'package:app/widgets/glass_container.dart'; // Import GlassContainer
+import 'dart:convert'; // For base64Decode
+import 'package:lottie/lottie.dart'; // Import Lottie
+
+// --- Assuming these screen imports exist in your project ---
+import 'package:app/models/role.dart';
+import 'package:app/screens/membership_requests_screen.dart';
 
 // --- Assuming these screen imports exist in your project ---
 import 'attendance_screen.dart'; 
 import 'events_screen.dart'; 
 import 'members_screen.dart'; 
-import 'login_screen.dart'; 
 import 'collaboration_screen.dart';
 // ---------------------------------------------------------
 
@@ -19,7 +26,8 @@ import 'collaboration_screen.dart';
 // A type-safe data class for our dashboard items
 class _DashboardItem {
   final String title;
-  final Widget icon;
+  final String? lottieAsset; // Path to local Lottie JSON
+  final Widget? icon; // Fallback or static icon
   final Widget drawerIcon;
   final String subtitle;
   final Widget destination;
@@ -27,7 +35,8 @@ class _DashboardItem {
 
   _DashboardItem({
     required this.title,
-    required this.icon,
+    this.lottieAsset,
+    this.icon,
     required this.drawerIcon,
     required this.subtitle,
     required this.destination,
@@ -62,7 +71,10 @@ class DashboardScreen extends StatefulWidget {
 
 class _DashboardScreenState extends State<DashboardScreen> with TickerProviderStateMixin {
   bool _showContent = false;
-  User? _currentUser;
+  String _currentUsername = 'User';
+  String? _currentUserAvatar;
+  bool _isAdmin = false;
+  int _unreadAnnouncements = 0;
   
   // Animation controller for the tech background
   late AnimationController _techAnimationController;
@@ -73,67 +85,11 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
   // List to hold all the flying bits
   final List<_TechBit> _techBits = [];
 
-  static Widget _buildDashboardIcon(IconData iconData, Color color, double size) {
-    return Icon(iconData, size: size, color: color);
-  }
-
-  // --- VIBRANT & COLORFUL THEME (retained) ---
-  final List<_DashboardItem> dashboardItems = [
-    _DashboardItem(
-      title: 'Attendance',
-      icon: _buildDashboardIcon(Icons.checklist_rtl, Colors.white, 40.0), 
-      drawerIcon: _buildDashboardIcon(Icons.checklist_rtl, Colors.black87, 30.0),
-      subtitle: 'View & mark attendance logs',
-      destination: const AttendanceScreen(),
-      color: const Color(0xFF0077B6), // Strong Blue
-    ),
-    _DashboardItem(
-      title: 'Events',
-      icon: _buildDashboardIcon(Icons.event_note, Colors.white, 40.0),
-      drawerIcon: _buildDashboardIcon(Icons.event_note, Colors.black87, 30.0),
-      subtitle: 'Manage and view club events',
-      destination: const EventsScreen(),
-      color: const Color(0xFFF25C54), // Coral Red
-    ),
-    _DashboardItem(
-      title: 'Collaboration',
-      icon: _buildDashboardIcon(Icons.palette, Colors.white, 40.0),
-      drawerIcon: _buildDashboardIcon(Icons.palette, Colors.black87, 30.0),
-      subtitle: 'Access mindmaps and timelines',
-      destination: const CollaborationScreen(),
-      color: const Color(0xFF6A4C93), // Royal Purple
-    ),
-    _DashboardItem(
-      title: 'Announcements',
-      icon: _buildDashboardIcon(Icons.campaign, Colors.black87, 40.0),
-      drawerIcon: _buildDashboardIcon(Icons.campaign, Colors.black87, 30.0),
-      subtitle: 'Read the latest club news',
-      destination: const AnnouncementsScreen(),
-      color: const Color(0xFF06D6A0), // Bright Mint
-    ),
-    _DashboardItem(
-      title: 'Members',
-      icon: _buildDashboardIcon(Icons.groups, Colors.black87, 40.0),
-      drawerIcon: _buildDashboardIcon(Icons.groups, Colors.black87, 30.0),
-      subtitle: 'Directory of all club members',
-      destination: const MembersScreen(),
-      color: const Color(0xFFFFB703), // Vibrant Gold
-    ),
-    _DashboardItem(
-      title: 'Settings',
-      icon: _buildDashboardIcon(Icons.settings_outlined, Colors.white, 40.0),
-      drawerIcon: _buildDashboardIcon(Icons.settings_outlined, Colors.black87, 30.0),
-      subtitle: 'App and profile settings',
-      destination: const SettingsScreen(),
-      color: const Color(0xFF495057), // Slate Grey
-    ),
-  ];
-  // ------------------------------------
-
   @override
   void initState() {
     super.initState();
-    _currentUser = AuthService().currentUser; 
+    _loadCurrentUser();
+    _loadUnreadAnnouncements();
 
     _techAnimationController = AnimationController(
       vsync: this,
@@ -151,26 +107,55 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
     });
   }
 
+  Future<void> _loadCurrentUser() async {
+    final roleDatabase = RoleBasedDatabaseService();
+    final user = await roleDatabase.getCurrentUser();
+    if (user != null) {
+      if (mounted) {
+        setState(() {
+          _currentUsername = user.username;
+          _currentUserAvatar = user.avatarUrl;
+          _isAdmin = user.role == UserRole.admin; // Check role
+        });
+      }
+    }
+  }
+
+  Future<void> _loadUnreadAnnouncements() async {
+    final roleDatabase = RoleBasedDatabaseService();
+    final user = await roleDatabase.getCurrentUser();
+    if (user != null) {
+      final count = await roleDatabase.getUnreadAnnouncementCount(user.email);
+       if (mounted) {
+        setState(() {
+          _unreadAnnouncements = count;
+        });
+      }
+    }
+  }
+
   // ✨ --- NEW: Helper method to create multi-colored bits --- ✨
   void _populateTechBits() {
     final random = math.Random();
     
     // --- Define our code snippet palettes ---
     const List<String> normalCodes = [
-      '10110', '0xAF', 'init()', '11101', '0xFF', 'render()', 'load_data', '1001'
+      'import pandas as pd', 'df.head()', 'model.fit(X, y)', 'import numpy as np',
+      'plt.show()', 'System.out.println(...)'
     ];
     const List<String> specialCodes = [
-      'printf("User")', 'await auth()', '200 OK', 'Connected', 'Socket(Open)'
+      'from sklearn.model_selection import train_test_split', 'tf.keras.models.Sequential()', 'import weka.core.Instances;',
+      'LinearRegression model = new LinearRegression();', 'model.buildClassifier(data);', 'new NeuralNetConfiguration.Builder()'
     ];
     const List<String> errorCodes = [
       'Error 404', 'NULL_PTR', 'FATAL', 'Access Denied', 'Segfault', 'ERR: 500'
     ];
 
-    const Color normalColor = Colors.yellow;
-    const Color specialColor = Color(0xFF06D6A0); // Bright Mint/Green
-    const Color errorColor = Color(0xFFF25C54); // Coral Red
+    const Color normalColor = Colors.white70;
+    const Color specialColor = Color(0xFFFFD700); // Gold
+    const Color errorColor = Color(0xFFFF5252); // Red Accent
 
-    for (int i = 0; i < 50; i++) { // Create 50 bits
+    for (int i = 0; i < 25; i++) { // Reduced to 25 for better performance
       final String text;
       final Color color;
       final double roll = random.nextDouble();
@@ -190,15 +175,14 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
         _TechBit(
           text: text,
           initialPosition: Offset(random.nextDouble(), random.nextDouble()), 
-          speed: random.nextDouble() * 0.7 + 0.3,
+          speed: random.nextDouble() * 1.5 + 0.5, // Increased speed
           color: color,
           fontSize: random.nextDouble() * 6 + 8,
         ),
       );
     }
   }
-  // ---------------------------------------
-
+  
   @override
   void dispose() {
     _techAnimationController.dispose();
@@ -207,20 +191,101 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
 
   @override
   Widget build(BuildContext context) {
+    return ValueListenableBuilder<ThemeMode>(
+        valueListenable: themeService,
+        builder: (context, themeMode, child) {
     final theme = Theme.of(context);
-    
-    final Color primaryColor = const Color(0xFF121212); 
-    final isPrimaryDark = primaryColor.computeLuminance() < 0.5;
-    final appBarTextColor = isPrimaryDark ? Colors.white : Colors.black87;
+    final isDarkMode = themeMode == ThemeMode.dark;
+
+    final primaryColor = theme.colorScheme.primary;
+    final appBarTextColor = theme.colorScheme.onSurface;
+
+  final List<_DashboardItem> dashboardItems = [
+    _DashboardItem(
+      title: 'Attendance',
+      lottieAsset: 'assets/lottie/attendance.json',
+      icon: Icon(Icons.co_present, size: 40, color: Colors.white),
+      drawerIcon: Icon(Icons.co_present, size: 30, color: isDarkMode ? Colors.white : Colors.black87),
+      subtitle: 'View & mark attendance logs',
+      destination: const AttendanceScreen(),
+      color: const Color(0xFF0077B6), // Strong Blue
+    ),
+    _DashboardItem(
+      title: 'Events',
+      lottieAsset: 'assets/lottie/events.json',
+      icon: Icon(Icons.event, size: 40, color: Colors.white),
+      drawerIcon: Icon(Icons.event, size: 30, color: isDarkMode ? Colors.white : Colors.black87),
+      subtitle: 'Manage and view club events',
+      destination: const EventsScreen(),
+      color: const Color(0xFFF25C54), // Coral Red
+    ),
+    _DashboardItem(
+      title: 'Collaboration',
+      lottieAsset: 'assets/lottie/collaboration.json',
+      icon: Icon(Icons.handshake, size: 40, color: Colors.white),
+      drawerIcon: Icon(Icons.handshake, size: 30, color: isDarkMode ? Colors.white : Colors.black87),
+      subtitle: 'Access mindmaps and timelines',
+      destination: const CollaborationScreen(),
+      color: const Color(0xFF6A4C93), // Royal Purple
+    ),
+    _DashboardItem(
+      title: 'Announcements',
+      lottieAsset: 'assets/lottie/announcements.json',
+      icon: _unreadAnnouncements > 0
+          ? Badge(
+              label: Text('$_unreadAnnouncements'),
+              child: const Icon(Icons.campaign, size: 40, color: Colors.black87),
+            )
+          : const Icon(Icons.campaign, size: 40, color: Colors.black87),
+      drawerIcon: _unreadAnnouncements > 0
+          ? Badge(
+              label: Text('$_unreadAnnouncements'),
+              child: Icon(Icons.campaign, size: 30, color: isDarkMode ? Colors.white : Colors.black87),
+            )
+          : Icon(Icons.campaign, size: 30, color: isDarkMode ? Colors.white : Colors.black87),
+      subtitle: 'Read the latest club news',
+      destination: const AnnouncementsScreen(),
+      color: const Color(0xFF06D6A0), // Bright Mint
+    ),
+    _DashboardItem(
+      title: 'Members',
+      lottieAsset: 'assets/lottie/members.json',
+      icon: Icon(Icons.people, size: 40, color: Colors.black87),
+      drawerIcon: Icon(Icons.people, size: 30, color: isDarkMode ? Colors.white : Colors.black87),
+      subtitle: 'Directory of all club members',
+      destination: const MembersScreen(),
+      color: const Color(0xFFFFB703), // Vibrant Gold
+    ),
+    if (_isAdmin)
+      _DashboardItem(
+        title: 'Join Requests',
+        lottieAsset: 'assets/lottie/join_requests.json',
+        icon: Icon(Icons.person_add, size: 40, color: Colors.white),
+        drawerIcon: Icon(Icons.person_add, size: 30, color: isDarkMode ? Colors.white : Colors.black87),
+        subtitle: 'Approve new members',
+        destination: const MembershipRequestsScreen(),
+        color: Colors.teal, 
+      ),
+    _DashboardItem(
+      title: 'Settings',
+      lottieAsset: 'assets/lottie/settings.json',
+      icon: Icon(Icons.settings, size: 40, color: Colors.white),
+      drawerIcon: Icon(Icons.settings, size: 30, color: isDarkMode ? Colors.white : Colors.black87),
+      subtitle: 'App and profile settings',
+      destination: const SettingsScreen(),
+      color: const Color(0xFF495057), // Slate Grey
+    ),
+  ];
 
     return Scaffold(
       drawer: Drawer(
+        backgroundColor: theme.scaffoldBackgroundColor,
         child: ListView(
           padding: EdgeInsets.zero,
           children: <Widget>[
-            _buildDrawerHeader(context, theme, primaryColor, appBarTextColor),
+            _buildDrawerHeader(context, theme, primaryColor, appBarTextColor, isDarkMode),
             ListTile(
-              leading: const Icon(Icons.home, color: Colors.black87),
+              leading: Icon(Icons.home, color: isDarkMode ? Colors.white : Colors.black87),
               title: const Text('Home'),
               onTap: () {
                 Navigator.of(context).pop();
@@ -237,9 +302,12 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
               return ListTile(
                 leading: SizedBox(width: 30, height: 30, child: item.drawerIcon),
                 title: Text(item.title),
-                onTap: () {
+                onTap: () async {
                   Navigator.of(context).pop();
-                  Navigator.of(context).push(MaterialPageRoute(builder: (_) => item.destination));
+                  await Navigator.of(context).push(MaterialPageRoute(builder: (_) => item.destination));
+                  if (item.title == 'Announcements') {
+                    _loadUnreadAnnouncements();
+                  }
                 },
               );
             }).toList(),
@@ -261,7 +329,7 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
               floating: true,
               pinned: true,
               foregroundColor: appBarTextColor, 
-              backgroundColor: primaryColor, 
+              backgroundColor: theme.scaffoldBackgroundColor, 
               
               title: Text(
                 'Dashboard',
@@ -279,13 +347,7 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
                   children: [
                     // --- Technical Grid Background ---
                     Container(
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                          colors: [primaryColor, const Color(0xFF212121)], 
-                        ),
-                      ),
+                      color: theme.scaffoldBackgroundColor,
                     ),
                     
                     // --- Mouse Reactive Wrapper ---
@@ -306,8 +368,8 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
                           return CustomPaint(
                             painter: TechGridPainter(
                               animationValue: _techAnimationController.value,
-                              lineColor: Colors.yellow.withOpacity(0.3),
-                              squareColor: Colors.yellowAccent.withOpacity(0.05),
+                              lineColor: theme.colorScheme.primary.withOpacity(0.1),
+                              squareColor: theme.colorScheme.secondary.withOpacity(0.05),
                               mousePosition: _mousePosition,
                               techBits: _techBits,
                             ),
@@ -331,55 +393,86 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
                         final double contentScale = lerpDouble(0.8, 1.0, tClamped)!;
                         final double contentYOffset = lerpDouble(20.0, 0.0, tClamped)!;
 
-                        return Positioned(
-                          bottom: 16.0,
-                          left: 20.0,
-                          right: 20.0,
-                          child: AnimatedOpacity(
-                            duration: Duration.zero, 
-                            opacity: contentOpacity,
-                            // This block now animates as one unit
-                            child: Transform.translate(
-                              offset: Offset(0, contentYOffset),
-                              child: Transform.scale(
-                                scale: contentScale,
-                                alignment: Alignment.bottomLeft,
-                                child: Row(
-                                  children: [
-                                    CircleAvatar(
-                                      radius: 25,
-                                      backgroundColor: Colors.white, 
-                                      child: Text(
-                                        _currentUser?.username.substring(0, 1).toUpperCase() ?? 'U',
-                                        style: theme.textTheme.headlineSmall?.copyWith(
-                                          color: primaryColor, 
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                      ),
-                                    ),
-                                    const SizedBox(width: 16),
-                                    Flexible(
-                                      child: Column(
-                                        mainAxisAlignment: MainAxisAlignment.end,
-                                        crossAxisAlignment: CrossAxisAlignment.start,
-                                        children: [
-                                          Text('Welcome back,', style: theme.textTheme.bodyMedium?.copyWith(color: Colors.white70)),
-                                          Text(
-                                            _currentUser?.username ?? 'User!',
-                                            style: theme.textTheme.headlineSmall?.copyWith(
-                                              fontWeight: FontWeight.bold,
-                                              color: appBarTextColor,
-                                            ),
-                                            overflow: TextOverflow.ellipsis,
+                        return Stack(
+                          fit: StackFit.expand,
+                          children: [
+                            Positioned(
+                              bottom: 16.0,
+                              left: 20.0,
+                              right: 20.0,
+                              child: AnimatedOpacity(
+                                duration: Duration.zero, 
+                                opacity: contentOpacity,
+                                // This block now animates as one unit
+                                child: Transform.translate(
+                                  offset: Offset(0, contentYOffset),
+                                  child: Transform.scale(
+                                    scale: contentScale,
+                                    alignment: Alignment.bottomLeft,
+                                    child: Row(
+                                      children: [
+                                        Container(
+                                          decoration: BoxDecoration(
+                                            shape: BoxShape.circle,
+                                            boxShadow: [
+                                              BoxShadow(
+                                                color: theme.colorScheme.primary.withOpacity(0.3),
+                                                blurRadius: 10,
+                                                spreadRadius: 2,
+                                              ),
+                                            ],
                                           ),
-                                        ],
-                                      ),
+                                          child: CircleAvatar(
+                                            radius: 25,
+                                            backgroundColor: theme.colorScheme.primary,
+                                            backgroundImage: (_currentUserAvatar != null && _currentUserAvatar!.isNotEmpty)
+                                                ? (_currentUserAvatar!.startsWith('http')
+                                                    ? NetworkImage(_currentUserAvatar!)
+                                                    : (() {
+                                                        try {
+                                                          return MemoryImage(base64Decode(_currentUserAvatar!.contains(',') ? _currentUserAvatar!.split(',').last : _currentUserAvatar!));
+                                                        } catch (e) {
+                                                          print('Error decoding avatar: $e');
+                                                          return null;
+                                                        }
+                                                      })() as ImageProvider?)
+                                                : null,
+                                            child: (_currentUserAvatar == null || _currentUserAvatar!.isEmpty)
+                                                ? Text(
+                                                    _currentUsername.isNotEmpty ? _currentUsername.substring(0, 1).toUpperCase() : 'U',
+                                                    style: theme.textTheme.headlineSmall?.copyWith(
+                                                      color: theme.colorScheme.onPrimary, 
+                                                      fontWeight: FontWeight.bold,
+                                                    ),
+                                                  )
+                                                : null,
+                                          ),
+                                        ),
+                                        const SizedBox(width: 16),
+                                        Flexible(
+                                          child: Column(
+                                            mainAxisAlignment: MainAxisAlignment.end,
+                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            children: [
+                                              Text('Welcome back,', style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurface.withOpacity(0.7))),
+                                              Text(
+                                                _currentUsername,
+                                                style: theme.textTheme.headlineSmall?.copyWith(
+                                                  fontWeight: FontWeight.bold,
+                                                  color: appBarTextColor,
+                                                ),
+                                                overflow: TextOverflow.ellipsis,
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ],
                                     ),
-                                  ],
+                                  ),
                                 ),
                               ),
                             ),
-                          ),
+                          ],
                         );
                       },
                     ),
@@ -403,8 +496,8 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
                 duration: const Duration(milliseconds: 500),
                 opacity: _showContent ? 1.0 : 0.0,
                 sliver: SliverGrid(
-                  gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-                    maxCrossAxisExtent: 320.0,
+                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: (MediaQuery.of(context).size.width / 320.0).floor().clamp(1, 4),
                     crossAxisSpacing: 16,
                     mainAxisSpacing: 16,
                     childAspectRatio: 1.6,
@@ -416,13 +509,16 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
                       return AnimationConfiguration.staggeredGrid(
                         position: index,
                         duration: const Duration(milliseconds: 375), 
-                        columnCount: (MediaQuery.of(context).size.width / 320.0).ceil(),
+                        columnCount: (MediaQuery.of(context).size.width / 320.0).floor().clamp(1, 4),
                         child: ScaleAnimation(
                           child: FadeInAnimation(
                             child: _DashboardCard(
                               item: item,
-                              onTap: () {
-                                Navigator.of(context).push(MaterialPageRoute(builder: (_) => item.destination));
+                              onTap: () async {
+                                await Navigator.of(context).push(MaterialPageRoute(builder: (_) => item.destination));
+                                if (item.title == 'Announcements') {
+                                  _loadUnreadAnnouncements();
+                                }
                               },
                             ),
                           ),
@@ -438,23 +534,53 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
         ),
       ),
     );
+        });
   }
 
-  Widget _buildDrawerHeader(BuildContext context, ThemeData theme, Color primaryColor, Color appBarTextColor) {
+  Widget _buildDrawerHeader(BuildContext context, ThemeData theme, Color primaryColor, Color appBarTextColor, bool isDarkMode) {
     return DrawerHeader(
-      decoration: BoxDecoration(color: primaryColor), 
+      decoration: BoxDecoration(
+        color: theme.scaffoldBackgroundColor,
+        border: Border(bottom: BorderSide(color: theme.dividerColor)),
+      ), 
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          CircleAvatar(
-            radius: 30,
-            backgroundColor: Colors.white, 
-            child: Text(
-              _currentUser?.username.substring(0, 1).toUpperCase() ?? 'U',
-              style: theme.textTheme.headlineMedium?.copyWith(
-                color: primaryColor, 
-                fontWeight: FontWeight.bold,
-              ),
+          Container(
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              boxShadow: [
+                BoxShadow(
+                  color: primaryColor.withOpacity(0.3),
+                  blurRadius: 10,
+                  spreadRadius: 2,
+                ),
+              ],
+            ),
+            child: CircleAvatar(
+              radius: 30,
+              backgroundColor: primaryColor,
+              backgroundImage: (_currentUserAvatar != null && _currentUserAvatar!.isNotEmpty)
+                  ? (_currentUserAvatar!.startsWith('http')
+                      ? NetworkImage(_currentUserAvatar!)
+                      : (() {
+                          try {
+                            return MemoryImage(base64Decode(_currentUserAvatar!.contains(',') ? _currentUserAvatar!.split(',').last : _currentUserAvatar!));
+                          } catch (e) {
+                            print('Error decoding avatar: $e');
+                            return null;
+                          }
+                        })() as ImageProvider?)
+                  : null,
+              child: (_currentUserAvatar == null || _currentUserAvatar!.isEmpty)
+                  ? Text(
+                      _currentUsername.isNotEmpty ? _currentUsername.substring(0, 1).toUpperCase() : 'U',
+                      style: theme.textTheme.headlineMedium?.copyWith(
+                        color: theme.colorScheme.onPrimary, 
+                        fontWeight: FontWeight.bold,
+                      ),
+                    )
+                  : null,
             ),
           ),
           const SizedBox(width: 16),
@@ -462,9 +588,9 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
             mainAxisAlignment: MainAxisAlignment.center,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('Welcome,', style: theme.textTheme.titleSmall?.copyWith(color: Colors.white70)),
+              Text('Welcome,', style: theme.textTheme.titleSmall?.copyWith(color: theme.colorScheme.onSurface.withOpacity(0.7))),
               Text(
-                _currentUser?.username ?? 'User!',
+                _currentUsername,
                 style: theme.textTheme.headlineSmall?.copyWith(
                   fontWeight: FontWeight.bold,
                   color: appBarTextColor
@@ -500,20 +626,19 @@ class _DashboardCardState extends State<_DashboardCard> {
     final theme = Theme.of(context);
     final item = widget.item;
 
-    final isDark = item.color.computeLuminance() < 0.5;
-    final textColor = isDark ? Colors.white : Colors.black87; 
-    final subtitleColor = isDark ? Colors.white70 : Colors.black54;
+    final isDark = theme.brightness == Brightness.dark;
+    final textColor = Colors.white; 
+    final subtitleColor = Colors.white70;
 
     return AnimatedScale(
       scale: _isTapped ? 0.95 : 1.0,
       duration: const Duration(milliseconds: 150),
-      child: Card(
-        clipBehavior: Clip.antiAlias,
-        elevation: 6,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-        ),
+      child: GlassContainer(
+        opacity: isDark ? 0.1 : 0.8,
         color: item.color,
+        blur: 10,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.white.withOpacity(0.2), width: 1),
         child: InkWell(
           onTapDown: (_) => setState(() => _isTapped = true),
           onTapUp: (_) => setState(() => _isTapped = false),
@@ -525,38 +650,62 @@ class _DashboardCardState extends State<_DashboardCard> {
               }
             });
           },
-          child: Padding(
-            padding: const EdgeInsets.all(20.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                SizedBox(
-                  width: 60,
-                  height: 60,
-                  child: item.icon,
-                ),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      item.title,
-                      style: theme.textTheme.headlineSmall?.copyWith(
-                        fontWeight: FontWeight.bold,
-                        color: textColor,
-                      ),
+          child: Stack(
+            children: [
+              // --- Background Animation Layer ---
+              if (item.lottieAsset != null)
+                Positioned.fill(
+                  child: Opacity(
+                    opacity: 0.5, // Increased visibility
+                    child: Lottie.asset(
+                      item.lottieAsset!,
+                      fit: BoxFit.cover,
+                      onLoaded: (composition) {
+                        print('Lottie Loaded: ${item.lottieAsset}');
+                      },
+                      errorBuilder: (context, error, stackTrace) {
+                        print('Lottie Error for ${item.lottieAsset}: $error');
+                        return const SizedBox();
+                      },
                     ),
-                    const SizedBox(height: 4),
-                    Text(
-                      item.subtitle,
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        color: subtitleColor,
-                      ),
+                  ),
+                ),
+                
+              // --- Foreground Content Layer ---
+              Padding(
+                padding: const EdgeInsets.all(20.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    SizedBox(
+                      width: 60,
+                      height: 60,
+                      child: item.icon ?? const SizedBox(),
+                    ),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          item.title,
+                          style: theme.textTheme.headlineSmall?.copyWith(
+                            fontWeight: FontWeight.bold,
+                            color: textColor,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          item.subtitle,
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            color: subtitleColor,
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
       ),
@@ -590,11 +739,11 @@ class TechGridPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     // --- 1. Draw Mouse Reactive Spotlight (draw first so it's behind) ---
     if (mousePosition != Offset.zero) { 
-      final double radius = 100.0; 
+      final double radius = 150.0; 
       final Paint mousePaint = Paint()
         ..shader = RadialGradient(
           colors: [
-            Colors.yellow.withOpacity(0.15), // Yellow spotlight
+            lineColor.withOpacity(0.3), // Spotlight matches line color
             Colors.transparent,
           ],
           stops: [0.0, 1.0],
@@ -608,7 +757,7 @@ class TechGridPainter extends CustomPainter {
     // --- 2. Draw Animated Grid ---
     final Paint linePaint = Paint()
       ..color = lineColor 
-      ..strokeWidth = 1.0
+      ..strokeWidth = 0.5 // Thinner lines
       ..style = PaintingStyle.stroke;
 
     final Paint squareFillPaint = Paint()
@@ -658,11 +807,16 @@ class TechGridPainter extends CustomPainter {
     );
 
     // --- 4. Draw Flying Bits & Code --- ✨
-    double masterOffset = animationValue * size.height * 1.5; 
+    double masterOffset = animationValue * size.height * 2.5; // Increased speed
 
     for (final bit in techBits) {
       double currentY = (bit.initialPosition.dy * size.height) + (masterOffset * bit.speed);
-      currentY = (currentY % (size.height + 40)) - 20; 
+      
+      // Check if the bit is off-screen and reset it to the top
+      if (currentY > size.height + 20) {
+        currentY = (currentY % (size.height + 20)) - 40;
+      }
+
       double currentX = bit.initialPosition.dx * size.width;
 
       double opacity = 1.0;
@@ -679,6 +833,7 @@ class TechGridPainter extends CustomPainter {
               // Use the color from the bit object!
               color: bit.color.withOpacity(opacity * bit.color.opacity), 
               fontSize: bit.fontSize,
+              fontFamily: 'monospace', // Monospace for code
           ),
       );
       _textPainter.layout();

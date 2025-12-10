@@ -25,4 +25,16 @@ class AttendanceRecord {
   // Computed properties for convenience
   List<Member> get presentMembers => members.where((m) => m.isPresent).toList();
   List<Member> get absentMembers => members.where((m) => !m.isPresent).toList();
+
+  String get status {
+    if (presentMembers.length == members.length) {
+      return 'All Present';
+    } else if (absentMembers.length == members.length) {
+      return 'All Absent';
+    } else if (presentMembers.isNotEmpty) {
+      return 'Partial';
+    } else {
+      return 'No Records'; // Should ideally not happen if members list is not empty
+    }
+  }
 }

@@ -3,7 +3,6 @@ import 'package:app/screens/announcements_screen.dart';
 import 'package:app/screens/attendance_screen.dart';
 import 'package:app/screens/collaboration_screen.dart';
 import 'package:app/screens/events_screen.dart';
-import 'package:app/screens/login_screen.dart';
 import 'package:app/screens/members_screen.dart';
 import 'package:app/screens/settings_screen.dart';
 import 'package:flutter/material.dart';

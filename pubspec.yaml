@@ -32,11 +32,16 @@ dependencies:
     sdk: flutter
   flutter_svg: ^2.0.10
   shared_preferences: ^2.2.2
-  lottie: ^3.1.0
+  lottie: ^3.3.2
   flutter_staggered_animations: ^1.1.1
   particles_flutter: ^0.1.4
+  crypto: ^3.0.3
   cupertino_icons: ^1.0.8
   intl: ^0.19.0
+  google_fonts: ^6.1.0
+  stomp_dart_client: ^3.0.1
+  http: ^1.2.0
+  image_picker: ^1.0.4
 
 dev_dependencies:
   flutter_test:
@@ -67,13 +72,36 @@ flutter:
     - assets/svg/collaboration.svg
     - assets/svg/events.svg
     - assets/svg/logout.svg
+    - assets/svg/attendance_custom.svg
+    - assets/svg/collaboration_custom.svg
+    - assets/svg/events_custom.svg
+    - assets/svg/announcements_custom.svg
+    - assets/svg/members_custom.svg
+    - assets/svg/settings_custom.svg
+    - assets/svg/logout_custom.svg
+    - assets/svg/flowchart_custom.svg
+    - assets/svg/timeline_custom.svg
+    - assets/svg/guest_custom.svg
+    - assets/svg/form_custom.svg
+    - assets/svg/home_custom.svg
+    - assets/svg/mindmap_custom.svg
+    - assets/svg/role_custom.svg
+    - assets/svg/permissions_custom.svg
+    - assets/svg/splash_custom.svg
+    - assets/svg/reset_custom.svg
+    - assets/svg/clear_custom.svg
+    - assets/svg/login_custom.svg
+    - assets/svg/eye_custom.svg
+    - assets/svg/eye_hidden_custom.svg
     - assets/lottie/attendance.json
     - assets/lottie/collaboration.json
     - assets/lottie/events.json
-    - assets/lottie/logout.json
     - assets/lottie/members.json
     - assets/lottie/announcements.json
     - assets/lottie/settings.json
+    - assets/lottie/join_requests.json
+    - assets/images/
+    - assets/svg/
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images

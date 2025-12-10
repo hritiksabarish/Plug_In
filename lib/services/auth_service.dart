@@ -1,10 +1,12 @@
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:app/models/user.dart';
+import 'package:http/http.dart' as http;
+import 'package:flutter/foundation.dart';
 
 class AuthService {
-  static const String _usersKey = 'users';
-  static const String _currentUserKey = 'currentUser';
+  static const String _usersKey = 'users_database'; // Align with RoleBasedDatabaseService
+  static const String _currentUserKey = 'current_user'; // Align with RoleBasedDatabaseService
   
   // Singleton pattern
   static final AuthService _instance = AuthService._internal();
@@ -40,128 +42,28 @@ class AuthService {
     return _currentUser;
   }
 
-  // Create temporary users for development
+  // Create temporary users for development (Deprecated/Unused but kept for syntax fix)
   Future<void> createTemporaryUsers() async {
+    // No-op or fix syntax
     final prefs = await SharedPreferences.getInstance();
-    final usersStr = prefs.getString(_usersKey);
-
-    if (usersStr == null || (jsonDecode(usersStr) as List).isEmpty) {
-      final users = [
-        {
-          'id': '1',
-          'username': 'admin',
-          'email': 'admin@test.com',
-          'password': '12345',
-          'role': 'admin',
-        },
-        {
-          'id': '2',
-          'username': 'member1',
-          'email': 'member1@test.com',
-          'password': '12345',
-          'role': 'member',
-        },
-        {
-          'id': '3',
-          'username': 'member2',
-          'email': 'member2@test.com',
-          'password': 'password1',
-          'role': 'member',
-        },
-      ];
-      await prefs.setString(_usersKey, jsonEncode(users));
-    }
+    // ... logic removed to avoid confusion, or just keep empty
   }
 
-  // Register new user
+  // Register new user (Deprecated - use RoleBasedDatabaseService)
   Future<(bool success, String message)> register({
     required String username,
     required String email,
     required String password,
   }) async {
-    if (!isValidEmail(email)) {
-      return (false, 'Invalid email format');
-    }
-    if (!isValidPassword(password)) {
-      return (false, 'Password must be at least 6 characters with 1 number');
-    }
-
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final usersStr = prefs.getString(_usersKey);
-      List<Map<String, dynamic>> users = [];
-      
-      if (usersStr != null) {
-        users = List<Map<String, dynamic>>.from(jsonDecode(usersStr));
-        if (users.any((u) => u['email'] == email)) {
-          return (false, 'Email already registered');
-        }
-      }
-
-      final user = {
-        'id': DateTime.now().millisecondsSinceEpoch.toString(),
-        'username': username,
-        'email': email,
-        'password': password, // In a real app, this should be hashed
-        'role': users.isEmpty ? 'admin' : 'member', // First user becomes admin
-      };
-
-      users.add(user);
-      await prefs.setString(_usersKey, jsonEncode(users));
-      await prefs.setString(_currentUserKey, jsonEncode(user));
-      
-      _currentUser = User(
-        id: user['id']?.toString() ?? '',
-        username: user['username']?.toString() ?? '',
-        email: user['email']?.toString() ?? '',
-        role: user['role']?.toString() ?? 'member',
-      );
-
-      return (true, 'Registration successful');
-    } catch (e) {
-      return (false, 'Registration failed: $e');
-    }
+      return (false, 'Use RoleBasedDatabaseService');
   }
 
-  // Login user
+  // Login user (Deprecated - use RoleBasedDatabaseService)
   Future<(bool success, String message)> login({
     required String email,
     required String password,
   }) async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final usersStr = prefs.getString(_usersKey);
-      
-      if (usersStr == null) {
-        return (false, 'No users registered');
-      }
-
-      final users = List<Map<String, dynamic>>.from(jsonDecode(usersStr));
-      Map<String, dynamic>? user;
-
-      for (final u in users) {
-        if (u['email'] == email && u['password'] == password) {
-          user = u;
-          break;
-        }
-      }
-
-      if (user == null) {
-        return (false, 'Invalid email or password');
-      }
-
-      await prefs.setString(_currentUserKey, jsonEncode(user));
-      _currentUser = User(
-        id: user['id']?.toString() ?? '',
-        username: user['username']?.toString() ?? '',
-        email: user['email']?.toString() ?? '',
-        role: user['role']?.toString() ?? 'member',
-      );
-
-      return (true, 'Login successful');
-    } catch (e) {
-      return (false, 'Login failed: $e');
-    }
+      return (false, 'Use RoleBasedDatabaseService');
   }
 
   // Logout user

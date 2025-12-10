@@ -1,0 +1,14 @@
+<svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+  <!-- Central hub circle -->
+  <circle cx="100" cy="100" r="25" fill="currentColor"/>
+  <!-- Connected circles around -->
+  <circle cx="60" cy="60" r="18" fill="none" stroke="currentColor" stroke-width="6"/>
+  <circle cx="140" cy="60" r="18" fill="none" stroke="currentColor" stroke-width="6"/>
+  <circle cx="60" cy="140" r="18" fill="none" stroke="currentColor" stroke-width="6"/>
+  <circle cx="140" cy="140" r="18" fill="none" stroke="currentColor" stroke-width="6"/>
+  <!-- Connection lines -->
+  <line x1="100" y1="100" x2="60" y2="60" stroke="currentColor" stroke-width="5" stroke-linecap="round"/>
+  <line x1="100" y1="100" x2="140" y2="60" stroke="currentColor" stroke-width="5" stroke-linecap="round"/>
+  <line x1="100" y1="100" x2="60" y2="140" stroke="currentColor" stroke-width="5" stroke-linecap="round"/>
+  <line x1="100" y1="100" x2="140" y2="140" stroke="currentColor" stroke-width="5" stroke-linecap="round"/>
+</svg>

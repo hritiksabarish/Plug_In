@@ -1,0 +1,15 @@
+<svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+  <!-- Group of people -->
+  <!-- Person 1 (center) -->
+  <circle cx="100" cy="50" r="15" fill="currentColor"/>
+  <path d="M 90 70 L 85 110 L 95 120 L 105 120 L 115 110 L 110 70 Z" 
+        fill="currentColor"/>
+  <!-- Person 2 (left) -->
+  <circle cx="60" cy="65" r="12" fill="none" stroke="currentColor" stroke-width="6"/>
+  <path d="M 52 82 L 48 115 L 56 123 L 68 123 L 72 115 L 68 82 Z" 
+        fill="none" stroke="currentColor" stroke-width="6" stroke-linejoin="round"/>
+  <!-- Person 3 (right) -->
+  <circle cx="140" cy="65" r="12" fill="none" stroke="currentColor" stroke-width="6"/>
+  <path d="M 132 82 L 128 115 L 136 123 L 148 123 L 152 115 L 148 82 Z" 
+        fill="none" stroke="currentColor" stroke-width="6" stroke-linejoin="round"/>
+</svg>

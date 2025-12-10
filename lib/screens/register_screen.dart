@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:app/services/auth_service.dart';
+import 'package:app/services/role_database_service.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -11,15 +11,15 @@ class RegisterScreen extends StatefulWidget {
 class _RegisterScreenState extends State<RegisterScreen> {
   final _formKey = GlobalKey<FormState>();
   String _username = '';
-  String _email = '';
   String _password = '';
+  String _key = '';
   bool _isLoading = false;
   String? _error;
 
-  final _auth = AuthService();
+  final _auth = RoleBasedDatabaseService();
 
   Future<void> _register() async {
-    if (_username.isEmpty || _email.isEmpty || _password.isEmpty) {
+    if (_username.isEmpty || _password.isEmpty || _key.isEmpty) {
       setState(() { _error = 'Please fill all fields'; });
       return;
     }
@@ -28,14 +28,17 @@ class _RegisterScreenState extends State<RegisterScreen> {
     
     final (success, message) = await _auth.register(
       username: _username,
-      email: _email,
       password: _password,
+      key: _key,
     );
 
     if (!mounted) return;
 
     if (success) {
-      Navigator.of(context).pushReplacementNamed('/dashboard');
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Member added successfully!')),
+      );
+      Navigator.of(context).pop(); // Go back to Settings
     } else {
       setState(() { _error = message; });
     }
@@ -46,7 +49,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Register')),
+      appBar: AppBar(title: const Text('Add New Member')),
       body: Center(
         child: Card(
           margin: const EdgeInsets.all(24),
@@ -58,35 +61,50 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   TextFormField(
-                    decoration: const InputDecoration(labelText: 'Username'),
+                    decoration: const InputDecoration(
+                      labelText: 'Security Key',
+                      hintText: 'Enter Admin Key',
+                      prefixIcon: Icon(Icons.vpn_key),
+                    ),
+                    obscureText: true,
+                    onChanged: (v) => _key = v,
+                    validator: (v) => v == null || v.isEmpty ? 'Enter key' : null,
+                  ),
+                  const SizedBox(height: 16),
+                  TextFormField(
+                    decoration: const InputDecoration(
+                      labelText: 'Username',
+                      prefixIcon: Icon(Icons.person),
+                    ),
                     onChanged: (v) => _username = v,
                     validator: (v) => v == null || v.isEmpty ? 'Enter username' : null,
                   ),
+                  const SizedBox(height: 16),
                   TextFormField(
-                    decoration: const InputDecoration(labelText: 'Email'),
-                    onChanged: (v) => _email = v,
-                    validator: (v) => v == null || v.isEmpty ? 'Enter email' : null,
-                  ),
-                  TextFormField(
-                    decoration: const InputDecoration(labelText: 'Password'),
+                    decoration: const InputDecoration(
+                      labelText: 'Password',
+                      prefixIcon: Icon(Icons.lock),
+                    ),
                     obscureText: true,
                     onChanged: (v) => _password = v,
                     validator: (v) => v == null || v.isEmpty ? 'Enter password' : null,
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 24),
                   if (_error != null) ...[
                     Text(_error!, style: const TextStyle(color: Colors.red)),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 16),
                   ],
-                  ElevatedButton(
-                    onPressed: _isLoading ? null : () {
-                      if (_formKey.currentState?.validate() ?? false) _register();
-                    },
-                    child: _isLoading ? const CircularProgressIndicator() : const Text('Register'),
-                  ),
-                  TextButton(
-                    onPressed: () => Navigator.of(context).pushNamed('/login'),
-                    child: const Text('Already have an account? Login'),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 48,
+                    child: ElevatedButton(
+                      onPressed: _isLoading ? null : () {
+                        if (_formKey.currentState?.validate() ?? false) _register();
+                      },
+                      child: _isLoading 
+                        ? const CircularProgressIndicator() 
+                        : const Text('Add Member'),
+                    ),
                   ),
                 ],
               ),

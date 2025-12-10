@@ -4,6 +4,7 @@ import 'package:app/models/event.dart';
 import 'package:app/screens/announcements_screen.dart' as announcements_data;
 import 'package:app/screens/events_screen.dart' as events_data;
 import 'package:intl/intl.dart';
+import 'package:app/services/role_database_service.dart';
 
 class GuestScreen extends StatefulWidget {
   const GuestScreen({super.key});
@@ -13,8 +14,81 @@ class GuestScreen extends StatefulWidget {
 }
 
 class _GuestScreenState extends State<GuestScreen> {
-  final List<Event> _events = events_data.events;
-  final List<Announcement> _announcements = announcements_data.announcements;
+  final RoleBasedDatabaseService _databaseService = RoleBasedDatabaseService();
+  List<Event> _events = [];
+  bool _isLoadingEvents = true;
+  
+  // Form controllers
+  final _nameController = TextEditingController();
+  final _emailController = TextEditingController();
+  final _departmentController = TextEditingController();
+  final _yearController = TextEditingController(); 
+  final _sectionController = TextEditingController();
+  final _registerNumberController = TextEditingController();
+  final _mobileNumberController = TextEditingController();
+  final _reasonController = TextEditingController();
+  bool _isSubmitting = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadPublicEvents();
+  }
+
+  Future<void> _loadPublicEvents() async {
+    final data = await _databaseService.fetchEvents(publicOnly: true);
+    if (mounted) {
+      setState(() {
+        _events = data.map((json) => Event.fromJson(json)).toList();
+        _isLoadingEvents = false;
+      });
+    }
+  }
+
+  Future<void> _submitApplication() async {
+    if (_nameController.text.isEmpty || 
+        _emailController.text.isEmpty ||
+        _departmentController.text.isEmpty ||
+        _registerNumberController.text.isEmpty ||
+        _mobileNumberController.text.isEmpty) {
+       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please fill in all required fields')));
+       return;
+    }
+
+    setState(() => _isSubmitting = true);
+
+    final success = await _databaseService.submitMembershipRequest({
+      'name': _nameController.text,
+      'email': _emailController.text,
+      'department': _departmentController.text,
+      'year': _yearController.text,
+      'section': _sectionController.text,
+      'registerNumber': _registerNumberController.text,
+      'mobileNumber': _mobileNumberController.text,
+      'reason': _reasonController.text,
+    });
+
+    if (mounted) {
+      setState(() => _isSubmitting = false);
+      if (success) {
+        _nameController.clear();
+        _emailController.clear();
+        _departmentController.clear();
+        _yearController.clear();
+        _sectionController.clear();
+        _registerNumberController.clear();
+        _mobileNumberController.clear();
+        _reasonController.clear();
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Application sent successfully!'), backgroundColor: Colors.green),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Failed to send application. Try again.'), backgroundColor: Colors.red),
+        );
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -56,37 +130,162 @@ class _GuestScreenState extends State<GuestScreen> {
           const SizedBox(height: 16),
           SizedBox(
             height: 200,
-            child: ListView.builder(
-              scrollDirection: Axis.horizontal,
-              itemCount: _events.length,
-              itemBuilder: (context, index) {
-                return EventCard(event: _events[index]);
-              },
+            child: _isLoadingEvents
+                ? const Center(child: CircularProgressIndicator())
+                : _events.isEmpty
+                    ? const Center(child: Text('No upcoming public events.'))
+                    : ListView.builder(
+                        scrollDirection: Axis.horizontal,
+                        itemCount: _events.length,
+                        itemBuilder: (context, index) {
+                          return EventCard(event: _events[index]);
+                        },
+                      ),
+          ),
+          const SizedBox(height: 32),
+          
+          // Become a Member Form
+          Card(
+            elevation: 4,
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Become a Member', style: theme.textTheme.titleLarge),
+                  const SizedBox(height: 8),
+                  const Text('Join our community to access exclusive events and projects.'),
+                  const SizedBox(height: 16),
+                  
+                  // Name
+                  TextField(
+                    controller: _nameController,
+                    decoration: const InputDecoration(
+                      labelText: 'Full Name',
+                      border: OutlineInputBorder(),
+                      prefixIcon: Icon(Icons.person),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  
+                  // Email
+                  TextField(
+                    controller: _emailController,
+                    decoration: const InputDecoration(
+                      labelText: 'Email Address',
+                      border: OutlineInputBorder(),
+                      prefixIcon: Icon(Icons.email),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Register Number & Mobile
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: _registerNumberController,
+                          decoration: const InputDecoration(
+                            labelText: 'Register Number',
+                            border: OutlineInputBorder(),
+                            prefixIcon: Icon(Icons.numbers),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: TextField(
+                          controller: _mobileNumberController,
+                          decoration: const InputDecoration(
+                            labelText: 'Mobile Number',
+                            border: OutlineInputBorder(),
+                            prefixIcon: Icon(Icons.phone),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Department, Year, Section
+                  Row(
+                    children: [
+                      Expanded(
+                        flex: 2,
+                        child: TextField(
+                          controller: _departmentController,
+                          decoration: const InputDecoration(
+                            labelText: 'Department',
+                            border: OutlineInputBorder(),
+                            prefixIcon: Icon(Icons.school),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: TextField(
+                          controller: _yearController,
+                          decoration: const InputDecoration(
+                            labelText: 'Year',
+                            border: OutlineInputBorder(),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: TextField(
+                          controller: _sectionController,
+                          decoration: const InputDecoration(
+                            labelText: 'Sec',
+                            border: OutlineInputBorder(),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  
+                  // Reason
+                  TextField(
+                    controller: _reasonController,
+                    maxLines: 3,
+                    decoration: const InputDecoration(
+                      labelText: 'Why do you want to join?',
+                      border: OutlineInputBorder(),
+                      prefixIcon: Icon(Icons.edit),
+                      alignLabelWithHint: true,
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  
+                  SizedBox(
+                    width: double.infinity,
+                    height: 50,
+                    child: ElevatedButton.icon(
+                      onPressed: _isSubmitting ? null : _submitApplication,
+                      icon: _isSubmitting 
+                          ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2)) 
+                          : const Icon(Icons.send),
+                      label: Text(_isSubmitting ? 'Sending...' : 'Submit Application'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: theme.colorScheme.primary,
+                        foregroundColor: theme.colorScheme.onPrimary,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
-          const SizedBox(height: 24),
-
-          // Recent Announcements Section
-          Text(
-            'Recent Announcements',
-            style: theme.textTheme.titleLarge,
-          ),
-          const SizedBox(height: 16),
-          ..._announcements.map((announcement) => AnnouncementCard(announcement: announcement)).toList(),
 
           const SizedBox(height: 32),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.of(context).pushNamed('/register');
-            },
-            child: const Text('Become a member'),
-          ),
-          const SizedBox(height: 16),
-          TextButton(
-            onPressed: () {
-              Navigator.of(context).pushNamed('/login');
-            },
-            child: const Text('Already a member? Login here'),
+          Center(
+            child: TextButton(
+              onPressed: () {
+                Navigator.of(context).pushNamed('/login');
+              },
+              child: const Text('Already a member? Login here'),
+            ),
           ),
         ],
       ),

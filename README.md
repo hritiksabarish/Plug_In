@@ -1,35 +1,61 @@
-<<<<<<< HEAD
-# app
+# Slug N Plug (SnP) Club App 🐌⚡
 
-A new Flutter project.
+A modern, cross-platform mobile application for the **Slug N Plug** club, built with **Flutter** (Frontend) and **Spring Boot** (Backend) with **MongoDB**.
 
-## Getting Started
+## 🚀 Features
 
-This project is a starting point for a Flutter application.
+*   **Role-Based Access Control**: Admins, Moderators, Event Coordinators, and Members.
+*   **Attendance Tracking**: Detailed session history, stats, and manual marking.
+*   **Event Management**: Create, edit, and view club events.
+*   **Collaboration Tools**: Real-time mindmaps, flowcharts, and whiteboards.
+*   **modern UI**: Glassmorphism design, dark/light mode, and smooth animations.
 
-A few resources to get you started if this is your first Flutter project:
+## 🛠️ Tech Stack
 
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
+### Frontend (User App)
+*   **Framework**: Flutter (Dart)
+*   **State Management**: `setState` (Local) + Services
+*   **Design**: Custom Glassmorphism Theme
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
-=======
-# app
+### Backend (Server)
+*   **Framework**: Spring Boot (Java)
+*   **Database**: MongoDB
+*   **Security**: Spring Security + JWT (Stateless)
+*   **Build Tool**: Maven
 
-A new Flutter project.
+## 📦 Installation & Setup
 
-## Getting Started
+### Prerequisites
+*   Flutter SDK (3.x+)
+*   Java JDK (17+)
+*   MongoDB (Local or Atlas)
 
-This project is a starting point for a Flutter application.
+### 1. Backend Setup
+```bash
+cd backend
+# Configure your MongoDB URI in src/main/resources/application.properties if needed
+mvn spring-boot:run
+```
+The server will start on `http://localhost:8080`.
 
-A few resources to get you started if this is your first Flutter project:
+### 2. Frontend Setup
+```bash
+# In the root 'app' directory
+flutter pub get
+flutter run
+```
 
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
+## 📱 Screenshots
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
->>>>>>> c2de0bb330a1c34d938244d84fe73024cdd1fb4c
+*(Add your screenshots here)*
+
+## 🤝 Contribution
+
+1.  Fork the repository
+2.  Create your feature branch (`git checkout -b feature/AmazingFeature`)
+3.  Commit your changes (`git commit -m 'Add some AmazingFeature'`)
+4.  Push to the branch (`git push origin feature/AmazingFeature`)
+5.  Open a Pull Request
+
+---
+© 2025 Slug N Plug Club

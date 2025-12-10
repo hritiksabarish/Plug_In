@@ -1,0 +1,11 @@
+<svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+  <!-- Document/Form -->
+  <rect x="30" y="30" width="140" height="140" rx="8" fill="none" stroke="currentColor" stroke-width="8"/>
+  <!-- Lines representing form fields -->
+  <line x1="50" y1="60" x2="150" y2="60" stroke="currentColor" stroke-width="5" stroke-linecap="round"/>
+  <line x1="50" y1="85" x2="150" y2="85" stroke="currentColor" stroke-width="5" stroke-linecap="round"/>
+  <line x1="50" y1="110" x2="150" y2="110" stroke="currentColor" stroke-width="5" stroke-linecap="round"/>
+  <line x1="50" y1="135" x2="100" y2="135" stroke="currentColor" stroke-width="5" stroke-linecap="round"/>
+  <!-- Checkmark indicating completion -->
+  <path d="M 130 135 L 140 145 L 150 135" fill="none" stroke="currentColor" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

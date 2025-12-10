@@ -1,0 +1,13 @@
+<svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+  <!-- Bell shape -->
+  <path d="M 50 90 Q 50 60 100 60 Q 150 60 150 90 L 150 120 Q 150 140 140 145 L 60 145 Q 50 140 50 120 Z" 
+        fill="none" stroke="currentColor" stroke-width="8" stroke-linejoin="round"/>
+  <!-- Clapper/notification lines -->
+  <g stroke="currentColor" stroke-width="6" stroke-linecap="round">
+    <line x1="70" y1="85" x2="75" y2="115"/>
+    <line x1="100" y1="80" x2="100" y2="115"/>
+    <line x1="130" y1="85" x2="125" y2="115"/>
+  </g>
+  <!-- Exclamation dot -->
+  <circle cx="100" cy="160" r="8" fill="currentColor"/>
+</svg>

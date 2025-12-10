@@ -1,0 +1,10 @@
+<svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+  <!-- Logout arrow leaving -->
+  <path d="M 100 50 L 140 50 L 140 150 L 100 150" fill="none" stroke="currentColor" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- Door frame -->
+  <rect x="30" y="50" width="60" height="100" rx="5" fill="none" stroke="currentColor" stroke-width="8"/>
+  <!-- Arrow out -->
+  <path d="M 80 100 L 120 100" stroke="currentColor" stroke-width="8" stroke-linecap="round"/>
+  <path d="M 120 100 L 110 90" stroke="currentColor" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M 120 100 L 110 110" stroke="currentColor" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

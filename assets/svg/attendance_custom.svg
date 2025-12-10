@@ -1,0 +1,15 @@
+<svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+  <!-- Clipboard -->
+  <rect x="40" y="30" width="120" height="140" rx="8" fill="none" stroke="currentColor" stroke-width="8"/>
+  <!-- Clip -->
+  <rect x="75" y="15" width="50" height="20" rx="4" fill="currentColor"/>
+  <!-- Checkmarks -->
+  <g stroke="currentColor" stroke-width="8" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <!-- Check 1 -->
+    <path d="M 60 70 L 75 85 L 95 65"/>
+    <!-- Check 2 -->
+    <path d="M 60 110 L 75 125 L 95 105"/>
+    <!-- Check 3 -->
+    <path d="M 60 150 L 75 165 L 95 145"/>
+  </g>
+</svg>

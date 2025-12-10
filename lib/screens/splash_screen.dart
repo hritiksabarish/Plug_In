@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:app/services/auth_service.dart';
 
 class SplashScreen extends StatefulWidget {
@@ -38,6 +39,13 @@ class _SplashScreenState extends State<SplashScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
+            SvgPicture.asset(
+              'assets/svg/splash_custom.svg',
+              width: 120,
+              height: 120,
+              colorFilter: ColorFilter.mode(Colors.blue, BlendMode.srcIn),
+            ),
+            const SizedBox(height: 20),
             const Text(
               'SnP',
               style: TextStyle(

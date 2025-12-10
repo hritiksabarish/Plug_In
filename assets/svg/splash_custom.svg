@@ -1,0 +1,12 @@
+<svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+  <!-- Splash screen icon - water drop with sparkle -->
+  <!-- Water drop -->
+  <path d="M 100 30 Q 80 50 80 80 Q 80 120 100 150 Q 120 120 120 80 Q 120 50 100 30 Z" fill="none" stroke="currentColor" stroke-width="7" stroke-linejoin="round"/>
+  <!-- Sparkles -->
+  <circle cx="140" cy="50" r="4" fill="currentColor"/>
+  <line x1="130" y1="50" x2="150" y2="50" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
+  <line x1="140" y1="40" x2="140" y2="60" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
+  <circle cx="60" cy="70" r="3" fill="currentColor"/>
+  <line x1="53" y1="70" x2="67" y2="70" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+  <line x1="60" y1="63" x2="60" y2="77" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+</svg>

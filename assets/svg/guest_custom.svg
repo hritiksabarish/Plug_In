@@ -1,0 +1,9 @@
+<svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+  <!-- Guest user icon -->
+  <!-- Head -->
+  <circle cx="100" cy="55" r="20" fill="none" stroke="currentColor" stroke-width="7"/>
+  <!-- Body -->
+  <path d="M 85 75 L 75 120 L 125 120 L 115 75" fill="none" stroke="currentColor" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- Question mark for "guest" -->
+  <text x="100" y="165" font-size="48" font-weight="bold" text-anchor="middle" fill="currentColor">?</text>
+</svg>

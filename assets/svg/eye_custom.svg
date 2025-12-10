@@ -1,0 +1,13 @@
+<svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+  <!-- Eye icon - open eye with iris and pupil -->
+  <!-- Left eyelid curve -->
+  <path d="M 40 100 Q 70 60 100 50 Q 130 60 160 100" fill="none" stroke="currentColor" stroke-width="7" stroke-linecap="round"/>
+  <!-- Right eyelid curve (bottom) -->
+  <path d="M 40 100 Q 70 140 100 150 Q 130 140 160 100" fill="none" stroke="currentColor" stroke-width="7" stroke-linecap="round"/>
+  <!-- Iris circle -->
+  <circle cx="100" cy="100" r="22" fill="none" stroke="currentColor" stroke-width="6"/>
+  <!-- Pupil -->
+  <circle cx="100" cy="100" r="12" fill="currentColor"/>
+  <!-- Highlight -->
+  <circle cx="105" cy="95" r="5" fill="white"/>
+</svg>

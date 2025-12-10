@@ -35,4 +35,16 @@ ios/.symlinks/
 ios/Runner.xcworkspace/
 ios/Runner.xcodeproj/project.xcworkspace/
 ios/Runner.xcodeproj/xcuserdata/
-pubspec.lock
+# Spring Boot
+backend/target/
+backend/.mvn/wrapper/maven-wrapper.properties
+backend/mvnw
+backend/mvnw.cmd
+backend/help.md
+.env
+.DS_Store
+
+# IDEs
+.idea
+.vscode
+*.iml

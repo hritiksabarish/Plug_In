@@ -1,15 +1,140 @@
 import 'package:flutter/material.dart';
 import 'package:app/models/event.dart';
+import 'package:app/services/role_database_service.dart';
+import 'package:app/models/role.dart';
 import 'package:intl/intl.dart';
 
-final List<Event> events = [
-  Event(title: 'Flutter Workshop', date: DateTime(2025, 10, 20), description: 'A hands-on workshop on Flutter development.'),
-  Event(title: 'Club Meeting', date: DateTime(2025, 10, 25), description: 'Monthly club meeting to discuss upcoming activities.'),
-  Event(title: 'Hackathon', date: DateTime(2025, 11, 5), description: 'A 24-hour hackathon on mobile app development.'),
-];
-
-class EventsScreen extends StatelessWidget {
+class EventsScreen extends StatefulWidget {
   const EventsScreen({super.key});
+
+  @override
+  State<EventsScreen> createState() => _EventsScreenState();
+}
+
+class _EventsScreenState extends State<EventsScreen> {
+  final RoleBasedDatabaseService _databaseService = RoleBasedDatabaseService();
+  List<Event> _events = [];
+  bool _isLoading = true;
+  bool _canEdit = false; // Admin or Moderator
+
+  @override
+  void initState() {
+    super.initState();
+    _checkPermissions();
+    _loadEvents();
+  }
+
+  Future<void> _checkPermissions() async {
+    final user = await _databaseService.getCurrentUser();
+    if (mounted) {
+      setState(() {
+        _canEdit = user?.role == UserRole.admin || user?.role == UserRole.moderator;
+      });
+    }
+  }
+
+  Future<void> _loadEvents() async {
+    setState(() => _isLoading = true);
+    final data = await _databaseService.fetchEvents(publicOnly: false);
+    if (mounted) {
+      setState(() {
+        _events = data.map((json) => Event.fromJson(json)).toList();
+        _isLoading = false;
+      });
+    }
+  }
+
+  Future<void> _showEventDialog({Event? event}) async {
+    final isEditing = event != null;
+    final titleController = TextEditingController(text: event?.title ?? '');
+    final descriptionController = TextEditingController(text: event?.description ?? '');
+    final venueController = TextEditingController(text: event?.venue ?? '');
+    DateTime selectedDate = event?.date ?? DateTime.now();
+    bool isPublic = event?.isPublic ?? true;
+
+    await showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setState) => AlertDialog(
+          title: Text(isEditing ? 'Edit Event' : 'Add New Event'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: titleController,
+                  decoration: const InputDecoration(labelText: 'Title'),
+                ),
+                TextField(
+                  controller: descriptionController,
+                  decoration: const InputDecoration(labelText: 'Description'),
+                  maxLines: 3,
+                ),
+                TextField(
+                  controller: venueController,
+                  decoration: const InputDecoration(labelText: 'Venue'),
+                ),
+                const SizedBox(height: 16),
+                Row(
+                  children: [
+                    Text('Date: ${DateFormat.yMd().format(selectedDate)}'),
+                    TextButton(
+                      child: const Text('Select Date'),
+                      onPressed: () async {
+                        final picked = await showDatePicker(
+                          context: context,
+                          initialDate: selectedDate,
+                          firstDate: DateTime.now(),
+                          lastDate: DateTime(2101),
+                        );
+                        if (picked != null) {
+                          setState(() => selectedDate = picked);
+                        }
+                      },
+                    ),
+                  ],
+                ),
+                SwitchListTile(
+                  title: const Text('Public Event'),
+                  subtitle: const Text('Visible to guests?'),
+                  value: isPublic,
+                  onChanged: (val) => setState(() => isPublic = val),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                final newEventData = Event(
+                  id: event?.id,
+                  title: titleController.text,
+                  description: descriptionController.text,
+                  venue: venueController.text,
+                  date: selectedDate,
+                  isPublic: isPublic,
+                ).toJson();
+                
+                if (isEditing) {
+                   await _databaseService.updateEvent(event!.id!, newEventData);
+                } else {
+                   await _databaseService.createEvent(newEventData);
+                }
+
+                if (mounted) Navigator.pop(context);
+                _loadEvents();
+              },
+              child: Text(isEditing ? 'Save' : 'Add'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -17,21 +142,47 @@ class EventsScreen extends StatelessWidget {
       appBar: AppBar(
         title: const Text('Events'),
       ),
-      body: ListView.builder(
-        padding: const EdgeInsets.all(16.0),
-        itemCount: events.length,
-        itemBuilder: (context, index) {
-          return EventCard(event: events[index]);
-        },
-      ),
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : _events.isEmpty
+              ? const Center(child: Text('No events scheduled.'))
+              : ListView.builder(
+                  padding: const EdgeInsets.all(16.0),
+                  itemCount: _events.length,
+                  itemBuilder: (context, index) {
+                    return _EventCard(
+                      event: _events[index], 
+                      canEdit: _canEdit, 
+                      onEdit: () => _showEventDialog(event: _events[index]),
+                      onDelete: () async {
+                         await _databaseService.deleteEvent(_events[index].id!);
+                         _loadEvents();
+                      }
+                    );
+                  },
+                ),
+      floatingActionButton: _canEdit
+          ? FloatingActionButton(
+              onPressed: () => _showEventDialog(),
+              child: const Icon(Icons.add),
+            )
+          : null,
     );
   }
 }
 
-class EventCard extends StatelessWidget {
+class _EventCard extends StatelessWidget {
   final Event event;
+  final bool canEdit;
+  final VoidCallback onEdit;
+  final VoidCallback onDelete;
 
-  const EventCard({super.key, required this.event});
+  const _EventCard({
+    required this.event, 
+    required this.canEdit, 
+    required this.onEdit,
+    required this.onDelete
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -39,17 +190,45 @@ class EventCard extends StatelessWidget {
     return Card(
       elevation: 4,
       margin: const EdgeInsets.only(bottom: 16),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              event.title,
-              style: theme.textTheme.titleLarge,
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Expanded(
+                  child: Text(
+                    event.title,
+                    style: theme.textTheme.titleLarge,
+                  ),
+                ),
+                if (!event.isPublic)
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: Colors.orange.withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: const Text('INTERNAL ONLY', style: TextStyle(color: Colors.orange, fontSize: 10, fontWeight: FontWeight.bold)),
+                  ),
+                if (canEdit)
+                   Row(
+                     mainAxisSize: MainAxisSize.min,
+                     children: [
+                       IconButton(
+                         icon: const Icon(Icons.edit, color: Colors.blue), 
+                         onPressed: onEdit
+                       ),
+                       IconButton(
+                         icon: const Icon(Icons.delete, color: Colors.red), 
+                         onPressed: onDelete
+                       ),
+                     ],
+                   ),
+              ],
             ),
             const SizedBox(height: 8),
             Row(
@@ -58,6 +237,13 @@ class EventCard extends StatelessWidget {
                 const SizedBox(width: 8),
                 Text(
                   DateFormat.yMMMd().format(event.date),
+                  style: theme.textTheme.bodyMedium,
+                ),
+                const SizedBox(width: 16),
+                Icon(Icons.location_on, size: 16, color: theme.colorScheme.secondary),
+                const SizedBox(width: 8),
+                Text(
+                  event.venue,
                   style: theme.textTheme.bodyMedium,
                 ),
               ],
