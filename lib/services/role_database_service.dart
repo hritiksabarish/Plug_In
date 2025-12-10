@@ -396,24 +396,9 @@ class RoleBasedDatabaseService {
   }
 
   String _getBaseUrl() {
-    // Hardcoded IP for mobile testing as requested by user
-    return 'http://192.168.1.4:9000';
-    /*
-    if (kIsWeb) {
-      // Use current window host/IP if on web
-      // This allows accessing from mobile on same LAN (e.g. 192.168.x.x)
-      final host = Uri.base.host;
-      if (host.isNotEmpty) {
-        return 'http://$host:8080';
-      }
-      return 'http://localhost:8080';
-    } else {
-       if (defaultTargetPlatform == TargetPlatform.android) {
-        return 'http://10.0.2.2:8080';
-      }
-      return 'http://localhost:8080';
-    }
-    */
+    // static const String _baseUrl = 'http://192.168.1.3:9000/api'; // Local Mobile Dev
+    // Production Cloud URL
+    return 'https://plug-in-n697.onrender.com/api'; 
   }
 
   /// Fetch all users from Backend API
