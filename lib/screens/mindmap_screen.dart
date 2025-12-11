@@ -59,7 +59,6 @@ class _MindmapScreenState extends State<MindmapScreen>
 
   final WebSocketService _ws = WebSocketService();
   late String _projectId;
-  late String _projectId;
   late String _myUserId;
   
   bool _isPanMode = true; // Default to Pan for mobile
