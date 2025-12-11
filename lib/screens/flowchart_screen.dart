@@ -896,10 +896,10 @@ class _FlowchartScreenState extends State<FlowchartScreen> {
         ),
         if (widget.canEdit)
           Positioned(
-            right: -10,
-            top: _nodeSize.height / 2 - 10,
+            right: -25, // Move further out for thumb access
+            top: _nodeSize.height / 2 - 25, // Center vertically (50/2)
             child: GestureDetector(
-              behavior: HitTestBehavior.translucent,
+              behavior: HitTestBehavior.translucent, // Capture all touches in this area
               onPanDown: (_) => setState(() => _isInteractingWithHandle = true),
               onTapUp: (_) => setState(() => _isInteractingWithHandle = false),
               onTapCancel: () => setState(() => _isInteractingWithHandle = false),
@@ -920,7 +920,11 @@ class _FlowchartScreenState extends State<FlowchartScreen> {
                 String? targetId;
                 for (final other in _nodes) {
                   if (other.id == n.id) continue;
-                  final rect = Rect.fromLTWH(other.x, other.y, _nodeSize.width, _nodeSize.height);
+                  // Increase target detection area slightly for easier linking
+                  final rect = Rect.fromLTWH(
+                    other.x - 10, other.y - 10, 
+                    _nodeSize.width + 20, _nodeSize.height + 20
+                  );
                   if (rect.contains(endPoint)) {
                     targetId = other.id;
                     break;
@@ -953,19 +957,22 @@ class _FlowchartScreenState extends State<FlowchartScreen> {
                  });
               },
               child: Container(
-                width: 40,
-                height: 40,
-                color: Colors.transparent,
+                width: 50, // Larger hit area
+                height: 50,
+                color: Colors.transparent, // Invisible hit box
                 alignment: Alignment.center,
                 child: Container(
-                  width: 20,
-                  height: 20,
+                  width: 24, // Slightly larger visual
+                  height: 24,
                   decoration: BoxDecoration(
                     color: Colors.blue.withOpacity(0.5),
                     shape: BoxShape.circle,
                     border: Border.all(color: Colors.white, width: 2),
+                    boxShadow: [
+                      BoxShadow(color: Colors.black26, blurRadius: 4, spreadRadius: 1),
+                    ]
                   ),
-                  child: const Icon(Icons.add, size: 12, color: Colors.white),
+                  child: const Icon(Icons.add, size: 16, color: Colors.white),
                 ),
               ),
             ),
