@@ -31,7 +31,12 @@ class CreativeToolbar extends StatelessWidget {
     this.onSnapChanged,
     this.extraActions,
     this.activeUsers,
+    this.isPanMode,
+    this.onModeChanged,
   });
+
+  final bool? isPanMode;
+  final ValueChanged<bool>? onModeChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -85,6 +90,33 @@ class CreativeToolbar extends StatelessWidget {
                   scrollDirection: Axis.horizontal,
                   child: Row(
                     children: [
+                      if (isPanMode != null && onModeChanged != null) ...[
+                        Container(
+                          height: 32,
+                          decoration: BoxDecoration(
+                            color: colorScheme.surfaceContainerHighest.withOpacity(0.5),
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: colorScheme.outlineVariant.withOpacity(0.5)),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              _ToolButton(
+                                icon: Icons.pan_tool,
+                                isSelected: isPanMode!,
+                                onTap: () => onModeChanged!(true),
+                              ),
+                              Container(width: 1, color: colorScheme.outlineVariant.withOpacity(0.5)),
+                              _ToolButton(
+                                icon: Icons.mouse,
+                                isSelected: !isPanMode!,
+                                onTap: () => onModeChanged!(false),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                      ],
                       Chip(
                         label: Text(canEdit ? 'Editable' : 'Read-only'),
                         backgroundColor: canEdit ? Colors.green.withOpacity(0.2) : Colors.grey.withOpacity(0.2),
@@ -176,8 +208,38 @@ class CreativeToolbar extends StatelessWidget {
                   icon: const Icon(Icons.zoom_in),
                   tooltip: 'Zoom In',
                   onPressed: onZoomIn,
-                  iconSize: 20,
                 ),
+              
+              if (isPanMode != null && onModeChanged != null) ...[
+                const SizedBox(width: 8),
+                Container(
+                  height: 32,
+                  decoration: BoxDecoration(
+                    color: colorScheme.surfaceContainerHighest.withOpacity(0.5),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: colorScheme.outlineVariant.withOpacity(0.5)),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      _ToolButton(
+                        icon: Icons.pan_tool,
+                        tooltip: 'Pan Tool (Move Canvas)',
+                        isSelected: isPanMode!,
+                        onTap: () => onModeChanged!(true),
+                      ),
+                      Container(width: 1, color: colorScheme.outlineVariant.withOpacity(0.5)),
+                      _ToolButton(
+                        icon: Icons.mouse, // or near_me / arrow_selector_tool
+                        tooltip: 'Select Tool (Edit Nodes)',
+                        isSelected: !isPanMode!,
+                        onTap: () => onModeChanged!(false),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 8),
+              ],
                 
               const SizedBox(width: 16),
               
@@ -235,6 +297,41 @@ class CreativeToolbar extends StatelessWidget {
             ],
           );
         }
+      ),
+    );
+  }
+}
+
+class _ToolButton extends StatelessWidget {
+  final IconData icon;
+  final bool isSelected;
+  final VoidCallback onTap;
+  final String? tooltip;
+
+  const _ToolButton({
+    required this.icon,
+    required this.isSelected,
+    required this.onTap,
+    this.tooltip,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return Tooltip(
+      message: tooltip ?? '',
+      child: InkWell(
+        onTap: onTap,
+        child: Container(
+          width: 36,
+          height: 32,
+          color: isSelected ? colorScheme.secondary.withOpacity(0.2) : Colors.transparent,
+          child: Icon(
+            icon,
+            size: 18,
+            color: isSelected ? colorScheme.secondary : colorScheme.onSurfaceVariant,
+          ),
+        ),
       ),
     );
   }

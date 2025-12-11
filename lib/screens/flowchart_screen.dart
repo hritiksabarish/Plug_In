@@ -147,6 +147,9 @@ class _FlowchartScreenState extends State<FlowchartScreen> {
   
   late String _projectId;
   late String _myUserId;
+  
+  // Interaction Mode
+  bool _isPanMode = true; // Default to Pan for better mobile UX
 
   // Interaction
   String? _selectedId;
@@ -575,6 +578,7 @@ class _FlowchartScreenState extends State<FlowchartScreen> {
                 minScale: 0.1,
                 maxScale: 5.0,
                 constrained: false,
+                panEnabled: _isPanMode, // Controlled by toolbar
                 onInteractionUpdate: (details) {
                    setState(() {}); // For Minimap sync
                    if (details.pointerCount == 1) {
@@ -660,6 +664,8 @@ class _FlowchartScreenState extends State<FlowchartScreen> {
                       iconPath: 'assets/svg/flowchart_custom.svg',
                       canEdit: widget.canEdit,
                       activeUsers: const ['Alice', 'Bob', 'Charlie'],
+                      isPanMode: _isPanMode,
+                      onModeChanged: (v) => setState(() => _isPanMode = v),
                       onSave: _save,
                   showGrid: _showGrid,
                   onGridChanged: (v) => setState(() => _showGrid = v),
@@ -768,7 +774,10 @@ class _FlowchartScreenState extends State<FlowchartScreen> {
     return Positioned(
       left: n.x,
       top: n.y,
-      child: _buildDraggableNode(n),
+      child: IgnorePointer(
+        ignoring: _isPanMode, // Ignore touches in Pan Mode so they pass to InteractiveViewer
+        child: _buildDraggableNode(n),
+      ),
     );
   }
 

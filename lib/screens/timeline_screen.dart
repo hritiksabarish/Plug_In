@@ -23,6 +23,7 @@ class _TimelineScreenState extends State<TimelineScreen> {
   List<Map<String, dynamic>> _milestones = [];
   final List<String> _phases = ['Phase 1', 'Phase 2', 'Phase 3', 'Phase 4'];
   final double _laneHeight = 200.0;
+  bool _isPanMode = true; // Default to Pan
 
   final List<Color> colors = const [
     Color(0xFFFFD700), // Gold
@@ -353,6 +354,8 @@ class _TimelineScreenState extends State<TimelineScreen> {
             iconPath: 'assets/svg/timeline_custom.svg',
             canEdit: widget.canEdit,
             activeUsers: const ['Alice', 'Bob', 'Charlie'],
+            isPanMode: _isPanMode,
+            onModeChanged: (v) => setState(() => _isPanMode = v),
             onSave: _save,
             onZoomIn: () {
               _transformationController.value = _transformationController.value.scaled(1.2);
@@ -379,6 +382,7 @@ class _TimelineScreenState extends State<TimelineScreen> {
                     minScale: 0.1,
                     maxScale: 5.0,
                     constrained: false,
+                    panEnabled: _isPanMode,
                     child: Stack(
                       children: [
                         // Infinite Canvas Background/Grid
@@ -425,8 +429,10 @@ class _TimelineScreenState extends State<TimelineScreen> {
     return Positioned(
       left: x - dotSize / 2,
       top: y - dotSize / 2,
-      child: GestureDetector(
-        onTap: () => _showEditOptions(m),
+      child: IgnorePointer(
+        ignoring: widget.canEdit ? _isPanMode : false, // In read-only, gestures might just be click, but pan mode is for canvas moving.
+        child: GestureDetector(
+          onTap: () => _showEditOptions(m),
         onPanUpdate: (details) {
           if (!widget.canEdit) return;
           setState(() {

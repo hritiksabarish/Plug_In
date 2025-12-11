@@ -59,7 +59,10 @@ class _MindmapScreenState extends State<MindmapScreen>
 
   final WebSocketService _ws = WebSocketService();
   late String _projectId;
+  late String _projectId;
   late String _myUserId;
+  
+  bool _isPanMode = true; // Default to Pan for mobile
 
   Map<String, dynamic> _sanitizeNode(Map<String, dynamic> map) {
     // normalize connectedTo
@@ -181,7 +184,7 @@ class _MindmapScreenState extends State<MindmapScreen>
     _initialScale = _scale;
     
     // Store the initial position to check for node hits on first update
-    if (details.pointerCount == 1 && widget.canEdit) {
+    if (details.pointerCount == 1 && widget.canEdit && !_isPanMode) {
       final local = _toLocal(details.localFocalPoint);
       print('DEBUG: ScaleStart at $local (raw: ${details.localFocalPoint})');
       for (final n in _nodes) {
@@ -224,9 +227,11 @@ class _MindmapScreenState extends State<MindmapScreen>
       }
     } else {
       // Pan the canvas
-      final delta = details.localFocalPoint - _lastFocal;
-      setState(() => _offset += delta);
-      _velocity = delta;
+      if (_isPanMode) {
+        final delta = details.localFocalPoint - _lastFocal;
+        setState(() => _offset += delta);
+        _velocity = delta;
+      }
     }
     _lastFocal = details.localFocalPoint;
   }
@@ -581,6 +586,8 @@ class _MindmapScreenState extends State<MindmapScreen>
       iconPath: 'assets/svg/mindmap_custom.svg',
       canEdit: widget.canEdit,
       activeUsers: const ['Alice', 'Bob', 'Charlie'],
+      isPanMode: _isPanMode,
+      onModeChanged: (v) => setState(() => _isPanMode = v),
       onSave: _save,
       onZoomIn: () {
         setState(() {
