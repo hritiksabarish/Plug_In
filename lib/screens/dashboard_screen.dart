@@ -323,6 +323,7 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
       ),
       body: AnimationLimiter(
         child: CustomScrollView(
+          physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
           slivers: [
             SliverAppBar(
               expandedHeight: 160.0, // Retained smaller header
@@ -496,11 +497,12 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
                 duration: const Duration(milliseconds: 500),
                 opacity: _showContent ? 1.0 : 0.0,
                 sliver: SliverGrid(
-                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: (MediaQuery.of(context).size.width / 320.0).floor().clamp(1, 4),
+                  gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+                    maxCrossAxisExtent: 350, // Fluidly adapts columns
+                    mainAxisExtent: 200, // Fixed height for consistency
                     crossAxisSpacing: 16,
                     mainAxisSpacing: 16,
-                    childAspectRatio: 1.6,
+                    // childAspectRatio is removed in favor of mainAxisExtent for precise control
                   ),
   
                   delegate: SliverChildBuilderDelegate(
