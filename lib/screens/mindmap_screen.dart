@@ -763,10 +763,25 @@ class _MindmapScreenState extends State<MindmapScreen>
                 child: AnimatedScale(
                   duration: const Duration(milliseconds: 220),
                   scale: linking ? 1.06 : 1.0,
-                  child: SizedBox(
-                    width: _MindmapScreenState.nodeWidth,
-                    height: _MindmapScreenState.nodeHeight,
-                    child: _buildNodeShape(node, color, linking),
+                  child: GestureDetector(
+                    onTap: () => _showNodeMenu(node),
+                    onLongPress: () {
+                       if (widget.canEdit) {
+                         // Haptic feedback could be added here
+                         _startLinking(node);
+                         ScaffoldMessenger.of(context).showSnackBar(
+                           const SnackBar(
+                             content: Text('Link Mode Started! Tap another node to connect.'),
+                             duration: Duration(milliseconds: 1500),
+                           ),
+                         );
+                       }
+                    },
+                    child: SizedBox(
+                      width: _MindmapScreenState.nodeWidth,
+                      height: _MindmapScreenState.nodeHeight,
+                      child: _buildNodeShape(node, color, linking),
+                    ),
                   ),
                 ),
               ),
