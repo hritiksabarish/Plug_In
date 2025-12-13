@@ -17,6 +17,29 @@ class CollaborationScreen extends StatefulWidget {
   State<CollaborationScreen> createState() => _CollaborationScreenState();
 }
 
+// Simple delegate used to host the content of a header that can collapse/expand
+class _SimpleHeaderDelegate extends SliverPersistentHeaderDelegate {
+  final double minExtentValue;
+  final double maxExtentValue;
+  final Widget child;
+
+  _SimpleHeaderDelegate({required this.minExtentValue, required this.maxExtentValue, required this.child});
+
+  @override
+  Widget build(BuildContext context, double shrinkOffset, bool overlapsContent) {
+    return SizedBox.expand(child: child);
+  }
+
+  @override
+  double get maxExtent => maxExtentValue;
+
+  @override
+  double get minExtent => minExtentValue;
+
+  @override
+  bool shouldRebuild(covariant SliverPersistentHeaderDelegate oldDelegate) => true;
+}
+
 class _CollaborationScreenState extends State<CollaborationScreen> with TickerProviderStateMixin {
   Map<String, dynamic>? _selectedProject;
   late TabController _tabController;
@@ -26,6 +49,7 @@ class _CollaborationScreenState extends State<CollaborationScreen> with TickerPr
   final _roleDatabase = RoleBasedDatabaseService();
   List<Map<String, dynamic>> _projects = [];
   bool _isLoading = true;
+  bool _isHeaderPinned = false; // mobile: whether the header is pinned (not collapsible)
 
   @override
   void initState() {
@@ -645,6 +669,36 @@ class _CollaborationScreenState extends State<CollaborationScreen> with TickerPr
     );
   }
 
+  Widget _buildMobileHeader(ThemeData theme, bool canEdit) {
+    // A small drag handle and pin indicator, followed by actual header content
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        // Drag handle row
+        Container(
+          width: double.infinity,
+          color: theme.scaffoldBackgroundColor,
+          padding: const EdgeInsets.only(top: 6, bottom: 6, left: 8, right: 8),
+          child: Row(
+            children: [
+              const Expanded(child: SizedBox()),
+              Container(width: 40, height: 6, decoration: BoxDecoration(color: Colors.grey[400], borderRadius: BorderRadius.circular(4))),
+              const SizedBox(width: 8),
+              IconButton(
+                icon: Icon(_isHeaderPinned ? Icons.push_pin : Icons.push_pin_outlined, size: 18),
+                tooltip: _isHeaderPinned ? 'Unpin header' : 'Pin header',
+                color: theme.colorScheme.primary,
+                onPressed: () => setState(() => _isHeaderPinned = !_isHeaderPinned),
+              ),
+            ],
+          ),
+        ),
+        // Actual header body
+        _buildContentHeader(theme, canEdit),
+      ],
+    );
+  }
+
   Collaboration? _currentCollaboration;
 
   Timer? _debounceTimer;
@@ -800,27 +854,38 @@ class _CollaborationScreenState extends State<CollaborationScreen> with TickerPr
                 ],
               ),
             ),
-            appBar: AppBar(
-              title: Text(_selectedProject?['title'] ?? 'Collaboration'),
-              bottom: _selectedProject == null
-                  ? null
-                  : TabBar(
-                      controller: _tabController,
-                      tabs: const [Tab(text: 'Flow'), Tab(text: 'Mind'), Tab(text: 'Time'), Tab(text: 'Polls')],
-                    ),
-            ),
+            appBar: null,
             body: _selectedProject == null
                 ? emptyState
-                : Column(
-                    children: [
-                      _buildContentHeader(theme, canEdit),
-                      Expanded(
-                        child: TabBarView(
-                          controller: _tabController,
-                          children: tabChildren,
+                : NestedScrollView(
+                    headerSliverBuilder: (context, innerBoxIsScrolled) {
+                      return [
+                        SliverAppBar(
+                          title: Text(_selectedProject?['title'] ?? 'Collaboration'),
+                          floating: true,
+                          snap: true,
+                          pinned: false,
+                          bottom: TabBar(
+                            controller: _tabController,
+                            isScrollable: true,
+                            tabs: const [Tab(text: 'Flow'), Tab(text: 'Mind'), Tab(text: 'Time'), Tab(text: 'Polls')],
+                          ),
                         ),
-                      ),
-                    ],
+                        SliverPersistentHeader(
+                          pinned: _isHeaderPinned,
+                          delegate: _SimpleHeaderDelegate(
+                            minExtentValue: 64,
+                            maxExtentValue: 180,
+                            child: _buildMobileHeader(theme, canEdit),
+                          ),
+                        ),
+                      ];
+                    },
+                    body: TabBarView(
+                      controller: _tabController,
+                      physics: const NeverScrollableScrollPhysics(), // Disable swipe
+                      children: tabChildren,
+                    ),
                   ),
           );
         } else {
@@ -868,6 +933,7 @@ class _CollaborationScreenState extends State<CollaborationScreen> with TickerPr
                             Expanded(
                               child: TabBarView(
                                 controller: _tabController,
+                                physics: const NeverScrollableScrollPhysics(), // Disable swipe
                                 children: tabChildren,
                               ),
                             ),

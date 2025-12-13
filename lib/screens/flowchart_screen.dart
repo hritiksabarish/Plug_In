@@ -155,6 +155,7 @@ class _FlowchartScreenState extends State<FlowchartScreen> {
   String? _selectedId;
   String? _linkingFromId;
   Offset? _linkingToPoint;
+  Offset? _tempEnd; // For temporary link visualization
   bool _isInteractingWithHandle = false;
   
   // Settings
@@ -870,9 +871,39 @@ class _FlowchartScreenState extends State<FlowchartScreen> {
       clipBehavior: Clip.none,
       children: [
         GestureDetector(
-          onTap: () => _showNodeMenu(Offset(n.x + _nodeSize.width / 2, n.y + _nodeSize.height / 2), n),
-          onDoubleTap: null,
-          onLongPress: widget.canEdit ? () => _renameNode(n) : null,
+          onTap: () {
+            if (_linkingFromId != null && _linkingFromId != n.id) {
+               // Finish Linking
+               final fromNode = _nodes.firstWhere((x) => x.id == _linkingFromId);
+               setState(() {
+                 _connections.add(FlowConnection(
+                   id: DateTime.now().millisecondsSinceEpoch.toString(),
+                   fromId: fromNode.id,
+                   toId: n.id,
+                 ));
+                 _linkingFromId = null;
+                 _tempEnd = null;
+                 _save();
+               });
+               _ws.sendConnection(_projectId, 'ADD', _connections.last.toMap());
+            } else {
+               _showNodeMenu(Offset(n.x + _nodeSize.width / 2, n.y + _nodeSize.height / 2), n);
+            }
+          },
+          onDoubleTap: widget.canEdit ? () => _renameNode(n) : null, // Double tap to Rename
+          onLongPress: widget.canEdit ? () {
+             // Long Press to Start Link
+             setState(() {
+               _linkingFromId = n.id;
+               _tempEnd = Offset(n.x + _nodeSize.width/2, n.y + _nodeSize.height/2);
+             });
+             ScaffoldMessenger.of(context).showSnackBar(
+               const SnackBar(
+                 content: Text('Link Mode Started! Tap another node to connect.'),
+                 duration: Duration(milliseconds: 1500),
+               ),
+             );
+          } : null,
           onPanUpdate: (details) {
             if (!widget.canEdit) return;
             final matrix = _transformCtrl.value;

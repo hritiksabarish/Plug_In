@@ -2,6 +2,7 @@ import 'dart:math';
 import 'dart:ui';
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:app/models/collaboration.dart';
 import 'package:app/widgets/glass_container.dart';
@@ -52,6 +53,7 @@ class _MindmapScreenState extends State<MindmapScreen>
   String? _draggingNodeId;
   Offset? _dragStartLocal;
   Offset? _nodeStartPos;
+  String? _selectedId;
 
   static const double nodeWidth = 180; // Slightly wider for glass effect
   static const double nodeHeight = 56;
@@ -462,71 +464,96 @@ class _MindmapScreenState extends State<MindmapScreen>
     }
   }
 
-  void _showNodeMenu(Map<String, dynamic> node) {
-    if (_linkingFromId != null) {
-      setState(() {
-        _linkingFromId = null;
-        _linkingToPoint = null;
-      });
-    }
-  // compute the global position for the node taking current transform into account
-  final overlay = Overlay.of(context).context.findRenderObject() as RenderBox;
-  // Node local coordinates -> transformed (screen) coordinates: offset + local*scale
-  final nodeLocal = Offset(_toDouble(node['x']), _toDouble(node['y']));
-  final transformed = _offset + nodeLocal * _scale;
-  final offset = transformed;
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      showMenu<String>(
-        context: context,
-        position: RelativeRect.fromLTRB(
-          offset.dx + 50,
-          offset.dy + 10,
-          overlay.size.width - offset.dx,
-          overlay.size.height - offset.dy,
-        ),
-        items: [
-          PopupMenuItem(
-            value: 'rename',
-            child: const ListTile(
-                leading: Icon(Icons.edit), title: Text('Rename')),
-            onTap: () => Future.delayed(Duration.zero, () => _renameNode(node)),
-          ),
-          PopupMenuItem(
-            value: 'color',
-            child: const ListTile(
-                leading: Icon(Icons.palette), title: Text('Color')),
-            onTap: () => Future.delayed(Duration.zero, () => _pickColor(node)),
-          ),
-          PopupMenuItem(
-            value: 'icon',
-            child: const ListTile(
-                leading: Icon(Icons.emoji_emotions), title: Text('Icon')),
-            onTap: () => Future.delayed(Duration.zero, () => _pickIcon(node)),
-          ),
-          PopupMenuItem(
-            value: 'link',
-            child: const ListTile(
-                leading: Icon(Icons.link), title: Text('Start Link')),
-            onTap: () => Future.delayed(Duration.zero, () => _startLinking(node)),
-          ),
-          PopupMenuItem(
-            value: 'shape',
-            child: const ListTile(
-                leading: Icon(Icons.category), title: Text('Shape')),
-            onTap: () => Future.delayed(Duration.zero, () => _pickShape(node)),
-          ),
-          const PopupMenuDivider(),
-          PopupMenuItem(
-            value: 'delete',
-            child: const ListTile(
-                leading: Icon(Icons.delete, color: Colors.red),
-                title:
-                    Text('Delete', style: TextStyle(color: Colors.red))),
-            onTap: () => Future.delayed(Duration.zero, () => _deleteNode(node)),
-          ),
-        ],
-      );
+  void _addChildNode(Map<String, dynamic> parent) {
+    if (!widget.canEdit) return;
+    final newId = DateTime.now().millisecondsSinceEpoch.toString();
+    
+    final children = (parent['connectedTo'] as List).length;
+    
+    final newNode = {
+        'id': newId,
+        'x': parent['x'] + 240,
+        'y': parent['y'] + (children == 0 ? 0 : (children * 70)), 
+        'label': 'New Topic',
+        'nodeColor': parent['nodeColor'], 
+        'connectedTo': [],
+        'shape': 'rounded',
+    };
+    
+    setState(() {
+       _nodes.add(newNode);
+       (parent['connectedTo'] as List).add({
+          'targetId': newId, 
+          'color': parent['nodeColor'] ?? 0xFFFFD700,
+          'strokeWidth': 2.0,
+          'style': 'curved'
+       });
+       _selectedId = newId; 
     });
+    _save();
+    _syncNode(parent);
+    _syncNode(newNode);
+    
+    // Auto-edit:
+    Future.delayed(const Duration(milliseconds: 200), () => _renameNode(newNode));
+  }
+
+  Widget _buildContextBar() {
+    if (_selectedId == null) return const SizedBox.shrink();
+    if (!widget.canEdit) return const SizedBox.shrink();
+
+    final node = _nodes.firstWhere((n) => n['id'] == _selectedId, orElse: () => {});
+    if (node.isEmpty) return const SizedBox.shrink();
+
+    // Calculate Screen Position
+    final nodeLocal = Offset(_toDouble(node['x']), _toDouble(node['y']));
+    final transformed = _offset + nodeLocal * _scale;
+    
+    // Position ABOVE the node
+    final barWidth = 200.0;
+    final top = transformed.dy - 60; 
+    final left = transformed.dx + (nodeWidth * _scale / 2) - (barWidth / 2);
+
+    return Positioned(
+      top: top,
+      left: left,
+      child: Container(
+        padding: const EdgeInsets.all(8),
+        decoration: BoxDecoration(
+          color: Theme.of(context).cardColor,
+          borderRadius: BorderRadius.circular(24),
+          boxShadow: [
+             BoxShadow(color: Colors.black26, blurRadius: 8, offset: const Offset(0, 4))
+          ],
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+             IconButton(
+               icon: const Icon(Icons.add_circle, color: Colors.blueAccent),
+               tooltip: 'Add Child',
+               onPressed: () => _addChildNode(node),
+             ),
+             Container(width: 1, height: 24, color: Colors.grey[300]),
+             IconButton(
+               icon: Icon(Icons.link, color: Theme.of(context).brightness == Brightness.dark ? Colors.white70 : Colors.black54),
+               tooltip: 'Link',
+               onPressed: () => _startLinking(node),
+             ),
+             IconButton(
+               icon: const Icon(Icons.palette, color: Colors.purpleAccent),
+               tooltip: 'Color',
+               onPressed: () => _pickColor(node),
+             ),
+             IconButton(
+               icon: const Icon(Icons.delete, color: Colors.redAccent),
+               tooltip: 'Delete',
+               onPressed: () => _deleteNode(node),
+             ),
+          ],
+        ),
+      ),
+    );
   }
 
   @override
@@ -575,6 +602,9 @@ class _MindmapScreenState extends State<MindmapScreen>
             },
           ),
         ),
+        
+        // Floating Context Bar (MindMeister Style)
+        _buildContextBar(),
       ],
     );
   }
@@ -662,82 +692,144 @@ class _MindmapScreenState extends State<MindmapScreen>
   Widget _canvasArea() {
     return Listener(
       onPointerDown: (_) => _didPanOnCanvas = false,
-      child: GestureDetector(
-        key: _canvasKey,
-        behavior: HitTestBehavior.translucent,
-        onTapUp: (d) {
-          if (_linkingFromId != null) {
-            setState(() {
-              _linkingFromId = null;
-              _linkingToPoint = null;
-            });
-          } else if (!_didPanOnCanvas) {
-            final localPos = _toLocal(d.localPosition);
-            // Check if tap is on an existing node
-            Map<String, dynamic>? tappedNode;
-            for (final node in _nodes) {
-              final rect = Rect.fromLTWH(
-                _toDouble(node['x']),
-                _toDouble(node['y']),
-                _MindmapScreenState.nodeWidth,
-                _MindmapScreenState.nodeHeight,
-              );
-              if (rect.contains(localPos)) {
-                tappedNode = node;
-                break;
+      child: Stack(
+        children: [
+          // Background adapts to theme
+          Positioned.fill(
+            child: Container(color: Theme.of(context).scaffoldBackgroundColor),
+          ),
+          // Grid
+          Positioned.fill(
+            child: CustomPaint(
+              painter: _GridPainter(
+                  offset: _offset, 
+                  scale: _scale, 
+                  isDark: Theme.of(context).brightness == Brightness.dark
+              ),
+            ),
+          ),
+          // Content Layer (Interactions)
+          GestureDetector(
+            key: _canvasKey,
+            behavior: HitTestBehavior.translucent,
+                onTapUp: (d) {
+              if (_didPanOnCanvas) return;
+
+              final worldPos = _toLocal(d.localPosition);
+              Map<String, dynamic>? hitNode;
+              // Reverse iterate to hit top-most node first
+              for (final node in _nodes.reversed) {
+                 final rect = Rect.fromLTWH(
+                    _toDouble(node['x']),
+                    _toDouble(node['y']),
+                    _MindmapScreenState.nodeWidth,
+                    _MindmapScreenState.nodeHeight,
+                 );
+                 if (rect.contains(worldPos)) {
+                   hitNode = node;
+                   break;
+                 }
               }
-            }
-            if (tappedNode != null) {
-              _showNodeMenu(tappedNode);
-            } else {
-              _addNode(localPos);
-            }
-          }
-        },
-        onScaleStart: _onScaleStart,
-        onScaleUpdate: _onScaleUpdate,
-        onScaleEnd: _onScaleEnd,
-        child: AnimatedBuilder(
-          animation: _pulseController,
-          builder: (context, _) {
-            return Stack(
-              children: [
-                // Infinite Grid Background
-                Positioned.fill(
-                  child: CustomPaint(
-                    painter: _GridPainter(offset: _offset, scale: _scale),
-                  ),
-                ),
-                // Mindmap Content
-                ClipRect(
+
+              if (hitNode != null) {
+                 // NODE TAP LOGIC
+                 if (_linkingFromId != null) {
+                    if (_linkingFromId != hitNode['id']) {
+                        _endLinking(hitNode);
+                    }
+                 } else {
+                    setState(() => _selectedId = hitNode!['id']);
+                 }
+                 return;
+              }
+
+              // BACKGROUND TAP LOGIC
+              if (_linkingFromId != null) {
+                setState(() {
+                  _linkingFromId = null;
+                  _linkingToPoint = null;
+                });
+                ScaffoldMessenger.of(context).showSnackBar(
+                   const SnackBar(content: Text('Link cancelled'), duration: Duration(milliseconds: 500)),
+                );
+              } else if (_selectedId != null) {
+                 setState(() => _selectedId = null);
+              } else {
+                _addNode(worldPos);
+              }
+            },
+            onDoubleTapDown: (d) {
+               final worldPos = _toLocal(d.localPosition);
+               for (final node in _nodes.reversed) {
+                 final rect = Rect.fromLTWH(
+                    _toDouble(node['x']),
+                    _toDouble(node['y']),
+                    _MindmapScreenState.nodeWidth,
+                    _MindmapScreenState.nodeHeight,
+                 );
+                 if (rect.contains(worldPos)) {
+                   _renameNode(node);
+                   return;
+                 }
+               }
+            },
+            onLongPressStart: (d) {
+               final worldPos = _toLocal(d.localPosition);
+               for (final node in _nodes.reversed) {
+                 final rect = Rect.fromLTWH(
+                    _toDouble(node['x']),
+                    _toDouble(node['y']),
+                    _MindmapScreenState.nodeWidth,
+                    _MindmapScreenState.nodeHeight,
+                 );
+                 if (rect.contains(worldPos)) {
+                   if (widget.canEdit) {
+                       _startLinking(node);
+                       HapticFeedback.lightImpact();
+                       ScaffoldMessenger.of(context).showSnackBar(
+                           const SnackBar(content: Text('Link Mode Started! Tap target.'), duration: Duration(milliseconds: 1000)),
+                       );
+                   }
+                   return;
+                 }
+               }
+            },
+            onScaleStart: _onScaleStart,
+            onScaleUpdate: _onScaleUpdate,
+            onScaleEnd: _onScaleEnd,
+            child: Stack(
+               children: [
+                 // Connections & Nodes need to be transformed
+                 ClipRect(
                   child: Transform(
                     alignment: Alignment.topLeft,
                     transform: Matrix4.identity()
                       ..translate(_offset.dx, _offset.dy)
                       ..scale(_scale),
                     child: Stack(
-                      fit: StackFit.expand,
                       clipBehavior: Clip.none,
                       children: [
-                        Positioned.fill(
-                          child: CustomPaint(
-                            painter: _MindmapPainter(
-                              nodes: _nodes,
-                              pulseT: _pulseController.value,
-                              linkingFromId: _linkingFromId,
-                              linkingToPoint: _linkingToPoint,
-                            ),
-                          ),
-                        ),
-                        ..._nodes.map(_nodeWidget),
+                         // Connections
+                         Positioned.fill(
+                           child: CustomPaint(
+                             painter: _MindmapPainter(
+                               nodes: _nodes,
+                               pulseT: _pulseController.value,
+                               linkingFromId: _linkingFromId,
+                               linkingToPoint: _linkingToPoint,
+                             ),
+                           ),
+                         ),
+                         // Nodes
+                         ..._nodes.map(_nodeWidget),
                       ],
                     ),
                   ),
-                ),
-              ],
-            );
-          },
-        ),
+                 ),
+               ]
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -763,26 +855,11 @@ class _MindmapScreenState extends State<MindmapScreen>
                 child: AnimatedScale(
                   duration: const Duration(milliseconds: 220),
                   scale: linking ? 1.06 : 1.0,
-                  child: GestureDetector(
-                    onTap: () => _showNodeMenu(node),
-                    onLongPress: () {
-                       if (widget.canEdit) {
-                         // Haptic feedback could be added here
-                         _startLinking(node);
-                         ScaffoldMessenger.of(context).showSnackBar(
-                           const SnackBar(
-                             content: Text('Link Mode Started! Tap another node to connect.'),
-                             duration: Duration(milliseconds: 1500),
-                           ),
-                         );
-                       }
-                    },
-                    child: SizedBox(
+                  child: SizedBox(
                       width: _MindmapScreenState.nodeWidth,
                       height: _MindmapScreenState.nodeHeight,
                       child: _buildNodeShape(node, color, linking),
                     ),
-                  ),
                 ),
               ),
           ),
@@ -824,8 +901,8 @@ class _MindmapScreenState extends State<MindmapScreen>
                         if (other['id'] == id) continue;
                         final rect = Rect.fromLTWH(
                           other['x'] - 15, // Easier drop target
-                          other['y'] - 15, 
-                          _MindmapScreenState.nodeWidth + 30, 
+                          other['y'] - 15,
+                          _MindmapScreenState.nodeWidth + 30,
                           _MindmapScreenState.nodeHeight + 30
                         );
                         if (rect.contains(endPoint)) {
@@ -833,7 +910,7 @@ class _MindmapScreenState extends State<MindmapScreen>
                           break;
                         }
                       }
-                      
+
                       if (target != null) {
                         _endLinking(target);
                       } else {
@@ -873,6 +950,10 @@ class _MindmapScreenState extends State<MindmapScreen>
 
   Widget _buildNodeShape(Map<String, dynamic> node, Color color, bool linking) {
     final shape = node['shape'] ?? 'rounded';
+    final bool isSelected = _selectedId == node['id'];
+    
+    // MindMeister Style: Clean White background, Colored Border
+    // Content is Dark (Black87)
     final content = Center(
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -882,7 +963,7 @@ class _MindmapScreenState extends State<MindmapScreen>
               padding: const EdgeInsets.only(right: 8.0),
               child: Icon(
                 IconData(node['iconCodePoint'], fontFamily: 'MaterialIcons'),
-                color: color.computeLuminance() > 0.5 ? Colors.black87 : Colors.white70,
+                color: color, // Icon matches border color
                 size: 20,
               ),
             ),
@@ -890,9 +971,9 @@ class _MindmapScreenState extends State<MindmapScreen>
             child: Text(
               node['label'],
               style: TextStyle(
-                color: color.computeLuminance() > 0.5 ? Colors.black : Colors.white,
-                fontWeight: FontWeight.bold,
-                fontSize: 15,
+                color: Theme.of(context).brightness == Brightness.dark ? Colors.white70 : Colors.black87,
+                fontWeight: FontWeight.w600,
+                fontSize: 14,
               ),
               textAlign: TextAlign.center,
               maxLines: 2,
@@ -903,79 +984,76 @@ class _MindmapScreenState extends State<MindmapScreen>
       ),
     );
 
-    if (shape == 'circle') {
-      return Container(
-        decoration: BoxDecoration(
-          color: color.withOpacity(0.2),
-          shape: BoxShape.circle,
-          border: Border.all(
-            color: linking ? Colors.white : color.withOpacity(0.5),
-            width: linking ? 2 : 1,
-          ),
+    BoxDecoration baseDecoration({BoxShape shape = BoxShape.rectangle, BorderRadius? borderRadius}) {
+      final isDark = Theme.of(context).brightness == Brightness.dark;
+      return BoxDecoration(
+        color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
+        shape: shape,
+        borderRadius: borderRadius,
+        border: Border.all(
+          color: isSelected ? Colors.blueAccent : color,
+          width: isSelected ? 3 : 2,
         ),
-        child: content,
-      );
-    } else if (shape == 'diamond') {
-      return Stack(
-        alignment: Alignment.center,
-        children: [
-          Transform.rotate(
-            angle: 0.785398,
-            child: Container(
-              width: nodeHeight * 1.2,
-              height: nodeHeight * 1.2,
-              decoration: BoxDecoration(
-                color: color.withOpacity(0.2),
-                border: Border.all(
-                  color: linking ? Colors.white : color.withOpacity(0.5),
-                  width: linking ? 2 : 1,
-                ),
-              ),
-            ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            offset: const Offset(0, 2),
+            blurRadius: 4,
           ),
-          content,
-        ],
-      );
-    } else if (shape == 'triangle') {
-      return Stack(
-        alignment: Alignment.center,
-        children: [
-          CustomPaint(
-            size: const Size(nodeWidth, nodeHeight),
-            painter: _TrianglePainter(
-              color: color.withOpacity(0.2),
-              borderColor: linking ? Colors.white : color.withOpacity(0.5),
-            ),
-          ),
-          content,
-        ],
-      );
-    } else if (shape == 'parallelogram') {
-      return Stack(
-        alignment: Alignment.center,
-        children: [
-          CustomPaint(
-            size: const Size(nodeWidth, nodeHeight),
-            painter: _ParallelogramPainter(
-              color: color.withOpacity(0.2),
-              borderColor: linking ? Colors.white : color.withOpacity(0.5),
-            ),
-          ),
-          content,
+          if (isSelected)
+             BoxShadow(
+              color: Colors.blueAccent.withOpacity(0.2),
+              spreadRadius: 2,
+              blurRadius: 8,
+            )
         ],
       );
     }
 
-    // Default Rounded
-    return GlassContainer(
-      blur: 15,
-      opacity: 0.2,
-      color: color,
-      borderRadius: BorderRadius.circular(16),
-      border: Border.all(
-        color: linking ? Colors.white : color.withOpacity(0.5),
-        width: linking ? 2 : 1,
-      ),
+    if (shape == 'circle') {
+      return Container(
+        decoration: baseDecoration(shape: BoxShape.circle),
+        child: content,
+      );
+    } else if (shape == 'diamond') {
+       // Diamond is tricky with Border. We rotate a container.
+       return Stack(
+         alignment: Alignment.center,
+         children: [
+           Transform.rotate(
+             angle: 0.785398,
+             child: Container(
+               width: _MindmapScreenState.nodeHeight * 1.2,
+               height: _MindmapScreenState.nodeHeight * 1.2,
+               decoration: baseDecoration(borderRadius: BorderRadius.circular(4)),
+             ),
+           ),
+           content,
+         ],
+       );
+    } else if (shape == 'triangle') {
+        // Custom Paint for Triangle
+        return CustomPaint(
+            painter: _TrianglePainter(
+               color: Theme.of(context).brightness == Brightness.dark ? const Color(0xFF1E1E1E) : Colors.white, 
+               borderColor: isSelected ? Colors.blueAccent : color,
+            ),
+            child: Center(child: content),
+        );
+    } else if (shape == 'parallelogram') {
+         // Custom Paint for Parallelogram
+        return CustomPaint(
+            painter: _ParallelogramPainter(
+               color: Theme.of(context).brightness == Brightness.dark ? const Color(0xFF1E1E1E) : Colors.white, 
+               borderColor: isSelected ? Colors.blueAccent : color,
+            ),
+            child: Center(child: content),
+        );
+    }
+
+    // Default Rounded (Pill)
+    return Container(
+      decoration: baseDecoration(borderRadius: BorderRadius.circular(24)),
       child: content,
     );
   }
@@ -1380,22 +1458,19 @@ class _MindmapPainter extends CustomPainter {
 class _GridPainter extends CustomPainter {
   final Offset offset;
   final double scale;
-  _GridPainter({required this.offset, required this.scale});
+  final bool isDark;
+  _GridPainter({required this.offset, required this.scale, this.isDark = false});
 
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
-      ..color = Colors.grey.withOpacity(0.15)
-      ..strokeWidth = 1.5;
+      ..color = isDark ? Colors.white.withOpacity(0.1) : Colors.grey.withOpacity(0.3)
+      ..style = PaintingStyle.fill; // Dots are filled circles
 
     const double gridSize = 40.0;
     
     // Calculate visible world bounds
-    // We want to draw grid lines that cover the screen.
-    // Screen coordinate (sx, sy) corresponds to world coordinate (wx, wy) by:
-    // sx = wx * scale + offset.dx
-    // wx = (sx - offset.dx) / scale
-    
+    // We want to draw grid dots that cover the screen.
     final double left = -offset.dx / scale;
     final double top = -offset.dy / scale;
     final double right = (size.width - offset.dx) / scale;
@@ -1407,10 +1482,8 @@ class _GridPainter extends CustomPainter {
 
     for (double x = startX; x < right; x += gridSize) {
       for (double y = startY; y < bottom; y += gridSize) {
-         // Draw dot in screen coordinates
-         final screenX = x * scale + offset.dx;
-         final screenY = y * scale + offset.dy;
-         canvas.drawCircle(Offset(screenX, screenY), 1.5 * scale, paint);
+        final screenPos = (Offset(x, y) * scale) + offset;
+        canvas.drawCircle(screenPos, 1.5 * scale.clamp(0.5, 1.5), paint);
       }
     }
   }

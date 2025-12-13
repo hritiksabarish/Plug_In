@@ -113,6 +113,19 @@ class WebSocketService {
     );
   }
 
+  void sendConnection(String projectId, String type, Map<String, dynamic> data) {
+    if (!isConnected) return;
+    _client!.send(
+      destination: '/app/project.updateNode', // Re-use updateNode endpoint as per protocol
+      body: jsonEncode({
+        'type': 'CONNECTION_$type', // e.g. CONNECTION_ADD
+        'projectId': projectId,
+        'nodeId': data['id'], // Connection ID as nodeId
+        'data': data,
+      }),
+    );
+  }
+
   void disconnect() {
     _client?.deactivate();
     _client = null;
