@@ -644,9 +644,12 @@ class _CollaborationScreenState extends State<CollaborationScreen> with TickerPr
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       child: Row(
         children: [
-          Text(
-            _selectedProject!['title'],
-            style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
+          Flexible(
+            child: Text(
+              _selectedProject!['title'],
+              style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
+              overflow: TextOverflow.ellipsis,
+            ),
           ),
           const SizedBox(width: 12),
           Chip(
@@ -863,34 +866,58 @@ class _CollaborationScreenState extends State<CollaborationScreen> with TickerPr
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
                       // Collapsible Header Area
-                      AnimatedSize(
-                        duration: const Duration(milliseconds: 300),
-                        curve: Curves.easeInOut,
-                        child: _isMobileHeaderExpanded
-                           ? Container(
-                               color: theme.scaffoldBackgroundColor,
-                               child: Column(
-                                 mainAxisSize: MainAxisSize.min,
-                                 children: [
-                                   // Custom AppBar-like header
-                                   AppBar(
-                                     title: Text(_selectedProject?['title'] ?? 'Collaboration'),
-                                     automaticallyImplyLeading: false, // Handle drawer via parent Scaffold? No, drawer icon needs to be here or we need a global app bar. 
-                                     // Actually, since Scaffold.appBar is null, we need to provide the drawer button manually if inside body?
-                                     // Wait, Scaffold handles drawer edge drag. But we need a visual button.
-                                     leading: Builder(builder: (c) => IconButton(icon: const Icon(Icons.menu), onPressed: () => Scaffold.of(c).openDrawer())),
-                                     bottom: TabBar(
-                                       controller: _tabController,
-                                       isScrollable: true,
-                                       tabs: const [Tab(text: 'Flow'), Tab(text: 'Mind'), Tab(text: 'Time'), Tab(text: 'Polls')],
-                                     ),
-                                   ),
-                                   _buildMobileHeader(theme, canEdit),
-                                 ],
-                               ),
-                             )
-                           : const SizedBox.shrink(),
-                      ),
+                      // Collapsible Header Area
+                      if (_isMobileHeaderExpanded)
+                        Container(
+                           color: theme.scaffoldBackgroundColor,
+                           child: Column(
+                             mainAxisSize: MainAxisSize.min,
+                             children: [
+                                // Custom Header
+                                Container(
+                                  decoration: BoxDecoration(
+                                    color: theme.scaffoldBackgroundColor,
+                                    boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 4, offset: Offset(0, 2))],
+                                  ),
+                                  child: Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Padding(
+                                        padding: const EdgeInsets.symmetric(horizontal: 4.0, vertical: 8.0),
+                                        child: Row(
+                                          children: [
+                                            // Drawer Button
+                                            Builder(builder: (c) => IconButton(
+                                              icon: const Icon(Icons.menu), 
+                                              onPressed: () => Scaffold.of(c).openDrawer()
+                                            )),
+                                            // Title
+                                            Expanded(
+                                              child: Text(
+                                                _selectedProject?['title'] ?? 'Collaboration',
+                                                style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+                                                overflow: TextOverflow.ellipsis,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                      // TabBar
+                                      TabBar(
+                                        controller: _tabController,
+                                        isScrollable: true,
+                                        labelColor: theme.colorScheme.primary,
+                                        unselectedLabelColor: theme.disabledColor,
+                                        indicatorColor: theme.colorScheme.primary,
+                                        tabs: const [Tab(text: 'Flow'), Tab(text: 'Mind'), Tab(text: 'Time'), Tab(text: 'Polls')],
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                               _buildMobileHeader(theme, canEdit),
+                             ],
+                           ),
+                        ),
                       // Toggle Handle
                       GestureDetector(
                         onTap: () => setState(() => _isMobileHeaderExpanded = !_isMobileHeaderExpanded),

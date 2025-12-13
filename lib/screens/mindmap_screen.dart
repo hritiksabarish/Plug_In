@@ -799,6 +799,7 @@ class _MindmapScreenState extends State<MindmapScreen>
             onScaleUpdate: _onScaleUpdate,
             onScaleEnd: _onScaleEnd,
             child: Stack(
+               fit: StackFit.expand,
                children: [
                  // Connections & Nodes need to be transformed
                  ClipRect(
