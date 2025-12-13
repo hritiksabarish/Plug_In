@@ -50,6 +50,7 @@ class _CollaborationScreenState extends State<CollaborationScreen> with TickerPr
   List<Map<String, dynamic>> _projects = [];
   bool _isLoading = true;
   bool _isHeaderPinned = false; // mobile: whether the header is pinned (not collapsible)
+  bool _isMobileHeaderExpanded = true; // mobile: toggle visibility
 
   @override
   void initState() {
@@ -857,36 +858,70 @@ class _CollaborationScreenState extends State<CollaborationScreen> with TickerPr
             appBar: null,
             body: _selectedProject == null
                 ? emptyState
-                : NestedScrollView(
-                    headerSliverBuilder: (context, innerBoxIsScrolled) {
-                      return [
-                        SliverAppBar(
-                          title: Text(_selectedProject?['title'] ?? 'Collaboration'),
-                          floating: true,
-                          snap: true,
-                          pinned: false,
-                          bottom: TabBar(
-                            controller: _tabController,
-                            isScrollable: true,
-                            tabs: const [Tab(text: 'Flow'), Tab(text: 'Mind'), Tab(text: 'Time'), Tab(text: 'Polls')],
+                : SafeArea(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                      // Collapsible Header Area
+                      AnimatedSize(
+                        duration: const Duration(milliseconds: 300),
+                        curve: Curves.easeInOut,
+                        child: _isMobileHeaderExpanded
+                           ? Container(
+                               color: theme.scaffoldBackgroundColor,
+                               child: Column(
+                                 mainAxisSize: MainAxisSize.min,
+                                 children: [
+                                   // Custom AppBar-like header
+                                   AppBar(
+                                     title: Text(_selectedProject?['title'] ?? 'Collaboration'),
+                                     automaticallyImplyLeading: false, // Handle drawer via parent Scaffold? No, drawer icon needs to be here or we need a global app bar. 
+                                     // Actually, since Scaffold.appBar is null, we need to provide the drawer button manually if inside body?
+                                     // Wait, Scaffold handles drawer edge drag. But we need a visual button.
+                                     leading: Builder(builder: (c) => IconButton(icon: const Icon(Icons.menu), onPressed: () => Scaffold.of(c).openDrawer())),
+                                     bottom: TabBar(
+                                       controller: _tabController,
+                                       isScrollable: true,
+                                       tabs: const [Tab(text: 'Flow'), Tab(text: 'Mind'), Tab(text: 'Time'), Tab(text: 'Polls')],
+                                     ),
+                                   ),
+                                   _buildMobileHeader(theme, canEdit),
+                                 ],
+                               ),
+                             )
+                           : const SizedBox.shrink(),
+                      ),
+                      // Toggle Handle
+                      GestureDetector(
+                        onTap: () => setState(() => _isMobileHeaderExpanded = !_isMobileHeaderExpanded),
+                        child: Container(
+                          width: double.infinity,
+                          height: 24,
+                          decoration: BoxDecoration(
+                            color: theme.colorScheme.primary.withOpacity(0.1),
+                            border: Border(bottom: BorderSide(color: Colors.grey.withOpacity(0.2))),
+                          ),
+                          child: Icon(
+                            _isMobileHeaderExpanded ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
+                            size: 20,
+                            color: theme.colorScheme.primary,
                           ),
                         ),
-                        SliverPersistentHeader(
-                          pinned: _isHeaderPinned,
-                          delegate: _SimpleHeaderDelegate(
-                            minExtentValue: 64,
-                            maxExtentValue: 180,
-                            child: _buildMobileHeader(theme, canEdit),
-                          ),
+                      ),
+                      // Main Content
+                      Expanded(
+                        child: Container(
+                           color: theme.scaffoldBackgroundColor, // Ensure background is not black
+                           child: TabBarView(
+                              controller: _tabController,
+                              physics: const NeverScrollableScrollPhysics(), // Disable swipe
+                              children: tabChildren,
+                           ),
                         ),
-                      ];
-                    },
-                    body: TabBarView(
-                      controller: _tabController,
-                      physics: const NeverScrollableScrollPhysics(), // Disable swipe
-                      children: tabChildren,
-                    ),
+                      ),
+                    ],
                   ),
+                ),
           );
         } else {
           return Row(

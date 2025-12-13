@@ -709,9 +709,10 @@ class _MindmapScreenState extends State<MindmapScreen>
             ),
           ),
           // Content Layer (Interactions)
-          GestureDetector(
-            key: _canvasKey,
-            behavior: HitTestBehavior.translucent,
+          Positioned.fill(
+            child: GestureDetector(
+              key: _canvasKey,
+              behavior: HitTestBehavior.translucent,
                 onTapUp: (d) {
               if (_didPanOnCanvas) return;
 
@@ -806,29 +807,32 @@ class _MindmapScreenState extends State<MindmapScreen>
                     transform: Matrix4.identity()
                       ..translate(_offset.dx, _offset.dy)
                       ..scale(_scale),
-                    child: Stack(
-                      clipBehavior: Clip.none,
-                      children: [
-                         // Connections
-                         Positioned.fill(
-                           child: CustomPaint(
-                             painter: _MindmapPainter(
-                               nodes: _nodes,
-                               pulseT: _pulseController.value,
-                               linkingFromId: _linkingFromId,
-                               linkingToPoint: _linkingToPoint,
-                             ),
+                  child: Stack(
+                    clipBehavior: Clip.none,
+                    children: [
+                       // Canvas Size Enforcer for Connections
+                       SizedBox(width: 10000, height: 10000), 
+                       // Connections
+                       Positioned.fill(
+                         child: CustomPaint(
+                           painter: _MindmapPainter(
+                             nodes: _nodes,
+                             pulseT: _pulseController.value,
+                             linkingFromId: _linkingFromId,
+                             linkingToPoint: _linkingToPoint,
                            ),
                          ),
-                         // Nodes
-                         ..._nodes.map(_nodeWidget),
-                      ],
-                    ),
+                       ),
+                       // Nodes
+                       ..._nodes.map(_nodeWidget),
+                    ],
                   ),
-                 ),
-               ]
-            ),
+                ),
+               ),
+             ]
           ),
+        ),
+      ),
         ],
       ),
     );
