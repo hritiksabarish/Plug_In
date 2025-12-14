@@ -11,6 +11,7 @@ class CalendarService {
     try {
       final eventsFuture = _fetchEvents();
       final scheduleFuture = _fetchSchedule();
+      print('CalendarService: Fetching from $_baseUrl');
       
       final results = await Future.wait([eventsFuture, scheduleFuture]);
       
