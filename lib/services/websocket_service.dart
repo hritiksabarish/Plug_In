@@ -24,7 +24,7 @@ class WebSocketService {
     }
 
     // Hardcoded IP for mobile testing (Updated)
-    String url = 'ws://192.168.1.4:9000/ws';
+    String url = 'wss://snp-tech-backend.hf.space/ws';
     /*
     String url = 'ws://localhost:8080/ws';
     if (!kIsWeb) {

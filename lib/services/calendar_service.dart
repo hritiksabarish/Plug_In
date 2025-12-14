@@ -5,7 +5,7 @@ import 'package:app/models/schedule_entry.dart';
 import 'package:app/services/role_database_service.dart';
 
 class CalendarService {
-  final String _baseUrl = 'http://192.168.1.3:8080/api';
+  final String _baseUrl = 'https://snp-tech-backend.hf.space/api';
 
   Future<List<dynamic>> fetchAllCalendarItems() async {
     try {
