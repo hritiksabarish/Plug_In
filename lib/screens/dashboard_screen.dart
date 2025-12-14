@@ -15,6 +15,7 @@ import 'package:lottie/lottie.dart'; // Import Lottie
 // --- Assuming these screen imports exist in your project ---
 import 'package:app/models/role.dart';
 import 'package:app/screens/membership_requests_screen.dart';
+import 'package:app/screens/calendar_screen.dart';
 
 // --- Assuming these screen imports exist in your project ---
 import 'attendance_screen.dart'; 
@@ -256,6 +257,15 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
       subtitle: 'Directory of all club members',
       destination: const MembersScreen(),
       color: const Color(0xFFFFB703), // Vibrant Gold
+    ),
+    _DashboardItem(
+      title: 'Calendar',
+      lottieAsset: null, // No Lottie for now, or reuse events? keeping null to use Icon
+      icon: const Icon(Icons.calendar_month, size: 40, color: Colors.white),
+      drawerIcon: Icon(Icons.calendar_month, size: 30, color: isDarkMode ? Colors.white : Colors.black87),
+      subtitle: 'Timetable & Events',
+      destination: const CalendarScreen(),
+      color: Colors.indigo, 
     ),
     if (_isAdmin)
       _DashboardItem(

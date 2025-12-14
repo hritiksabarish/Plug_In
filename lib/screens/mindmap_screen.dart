@@ -236,7 +236,8 @@ class _MindmapScreenState extends State<MindmapScreen>
   }
 
   void _onScaleEnd(ScaleEndDetails details) {
-    if (_velocity.distance > 1) {
+    // Only apply inertia if we were PANNING (not dragging a node)
+    if (_draggingNodeId == null && _velocity.distance > 1) {
       final begin = _offset;
       final end = _offset + _velocity * 20;
       final curve =
@@ -247,6 +248,9 @@ class _MindmapScreenState extends State<MindmapScreen>
         ..reset()
         ..forward();
     }
+    
+    // Reset velocity to prevent ghost flings later
+    _velocity = Offset.zero;
     
     // Sync dragged node position
     if (_draggingNodeId != null) {
