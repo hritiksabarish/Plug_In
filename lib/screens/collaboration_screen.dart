@@ -77,6 +77,7 @@ class _CollaborationScreenState extends State<CollaborationScreen> with TickerPr
   }
 
   Future<void> _loadData() async {
+    if (!mounted) return;
     setState(() => _isLoading = true);
     final user = await _roleDatabase.getCurrentUser();
     if (user == null) {
@@ -338,7 +339,13 @@ class _CollaborationScreenState extends State<CollaborationScreen> with TickerPr
                           return Padding(
                             padding: const EdgeInsets.symmetric(vertical: 6.0),
                             child: InkWell(
-                              onTap: isActive ? () => _votePoll(poll['id'], optIndex) : null,
+                              onTap: () {
+                                if (!isActive) {
+                                   ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('This poll is closed.')));
+                                   return;
+                                }
+                                _votePoll(poll['id'], optIndex);
+                              },
                               borderRadius: BorderRadius.circular(12),
                               child: Container(
                                 decoration: BoxDecoration(
@@ -527,18 +534,31 @@ class _CollaborationScreenState extends State<CollaborationScreen> with TickerPr
       }
       final success = await _roleDatabase.createPoll(_selectedProject!['id'], questionController.text, options, multiSelect: multiSelect);
       if (success) {
-        _loadData();
-        WebSocketService().sendNodeUpdate(_selectedProject!['id'], 'POLL_UPDATE', 'poll', {'action': 'CREATE'});
+        if (mounted) {
+           _loadData();
+           WebSocketService().sendNodeUpdate(_selectedProject!['id'], 'POLL_UPDATE', 'poll', {'action': 'CREATE'});
+        }
       }
     }
   }
 
   Future<void> _votePoll(String pollId, int optionIndex) async {
     if (_selectedProject == null) return;
+    print('DEBUG: Attempting to vote on poll $pollId, option $optionIndex by $_currentUserEmail');
+    
     final success = await _roleDatabase.votePoll(_selectedProject!['id'], pollId, _currentUserEmail, optionIndex);
+    
     if (success) {
+      print('DEBUG: Vote successful');
       _loadData();
       WebSocketService().sendNodeUpdate(_selectedProject!['id'], 'POLL_UPDATE', pollId, {'action': 'VOTE'});
+      if (mounted) {
+         ScaffoldMessenger.of(context).hideCurrentSnackBar();
+         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Vote recorded!'), duration: Duration(milliseconds: 600)));
+      }
+    } else {
+      print('DEBUG: Vote failed');
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Failed to record vote. Try again.')));
     }
   }
 
@@ -546,7 +566,7 @@ class _CollaborationScreenState extends State<CollaborationScreen> with TickerPr
     if (_selectedProject == null) return;
     final success = await _roleDatabase.deletePoll(_selectedProject!['id'], pollId);
     if (success) {
-      _loadData();
+      if (mounted) _loadData();
       WebSocketService().sendNodeUpdate(_selectedProject!['id'], 'POLL_UPDATE', pollId, {'action': 'DELETE'});
     }
   }
@@ -555,7 +575,7 @@ class _CollaborationScreenState extends State<CollaborationScreen> with TickerPr
     if (_selectedProject == null) return;
     final success = await _roleDatabase.togglePollStatus(_selectedProject!['id'], pollId);
     if (success) {
-      _loadData();
+      if (mounted) _loadData();
       WebSocketService().sendNodeUpdate(_selectedProject!['id'], 'POLL_UPDATE', pollId, {'action': 'TOGGLE_STATUS'});
     }
   }
