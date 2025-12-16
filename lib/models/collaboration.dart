@@ -23,13 +23,20 @@ class Collaboration {
         toolData = toolData ?? {};
 
   factory Collaboration.fromMap(Map<String, dynamic> map) {
+    final tools = map['toolData'] ?? map['tools'] ?? <String, dynamic>{};
+    
+    // Check for flattened data from backend and merge into tools
+    if (map['mindmapData'] != null) tools['mindmapData'] = map['mindmapData'];
+    if (map['flowchartData'] != null) tools['flowchartData'] = map['flowchartData'];
+    if (map['timelineData'] != null) tools['timelineData'] = map['timelineData'];
+
     return Collaboration(
       id: map['id'] ?? '',
       title: map['title'] ?? 'Untitled',
       leads: (map['leads'] as List?)?.cast<String>() ?? (map['ownerId'] != null ? [map['ownerId']] : []),
       members: (map['members'] as List?)?.cast<String>() ?? (map['activeUsers'] as List?)?.cast<String>() ?? [],
       createdAt: map['createdAt'] != null ? DateTime.tryParse(map['createdAt'].toString()) : null,
-      toolData: map['toolData'] ?? map['tools'] ?? {},
+      toolData: tools,
     );
   }
 }

@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:ui' show Tangent, PathMetric, PathMetrics; // for PathMetric.getTangentForOffset
 import 'package:flutter/material.dart';
 import 'package:vector_math/vector_math_64.dart' as vec; // for Vector3
@@ -224,8 +225,23 @@ class _FlowchartScreenState extends State<FlowchartScreen> {
   }
 
   void _loadData() {
+    // Check for stringified blob first
+    var nodeData = widget.collaboration?.toolData['flowchart_nodes'];
+    var connData = widget.collaboration?.toolData['flowchart_connections'];
+    
+    if (widget.collaboration?.toolData['flowchartData'] != null) {
+      try {
+        final decoded = jsonDecode(widget.collaboration!.toolData['flowchartData']);
+        if (decoded is Map) {
+           nodeData ??= decoded['nodes'];
+           connData ??= decoded['connections'];
+        }
+      } catch (e) {
+        print('Error parsing flowchartData: $e');
+      }
+    }
+
     // Load nodes
-    final nodeData = widget.collaboration?.toolData['flowchart_nodes'];
     if (nodeData is List) {
       _nodes = nodeData.map((e) => FlowNode.fromMap(e)).toList();
     }
@@ -237,7 +253,7 @@ class _FlowchartScreenState extends State<FlowchartScreen> {
     }
 
     // Load connections
-    final connData = widget.collaboration?.toolData['flowchart_connections'];
+    // connData already checked above
     if (connData is List) {
       for (final raw in connData) {
         try {

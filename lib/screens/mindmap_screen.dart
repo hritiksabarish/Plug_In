@@ -145,7 +145,15 @@ class _MindmapScreenState extends State<MindmapScreen>
   }
 
   void _loadNodes() {
-    final data = widget.collaboration?.toolData['mindmap_nodes'];
+    var data = widget.collaboration?.toolData['mindmap_nodes'];
+    if (data == null && widget.collaboration?.toolData['mindmapData'] != null) {
+       try {
+         final decoded = jsonDecode(widget.collaboration!.toolData['mindmapData']);
+         data = decoded['nodes'];
+       } catch (e) {
+         print('Error parsing mindmapData: $e');
+       }
+    }
       Map<String, dynamic> _toMap(dynamic it) {
         if (it == null) return <String, dynamic>{};
         if (it is Map<String, dynamic>) return Map<String, dynamic>.from(it);
@@ -628,6 +636,8 @@ class _MindmapScreenState extends State<MindmapScreen>
     
     // MindMeister Style: Clean White background, Colored Border
     // Content is Dark (Black87)
+    final hasLink = (node['link'] as String?)?.isNotEmpty ?? false;
+    
     final content = Center(
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -650,10 +660,13 @@ class _MindmapScreenState extends State<MindmapScreen>
                 fontSize: 14,
               ),
               textAlign: TextAlign.center,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
             ),
           ),
+          if (hasLink)
+            Padding(
+               padding: const EdgeInsets.only(left: 4.0),
+               child: Icon(Icons.link, size: 14, color: Colors.blue.shade400),
+            ),
         ],
       ),
     );
@@ -840,10 +853,11 @@ class _MindmapScreenState extends State<MindmapScreen>
 
     final x = _toDouble(node['x']);
     final y = _toDouble(node['y']);
+    final hasLink = (node['link'] as String?)?.isNotEmpty ?? false;
     
     // Position toolbar above the node
     return Positioned(
-      left: x + nodeWidth / 2 - 100, // Center horizontally (approx width 200)
+      left: x + nodeWidth / 2 - 120, // Slightly wider to accommodate new button
       top: y - 60,
       child: Material(
         elevation: 6,
@@ -860,15 +874,16 @@ class _MindmapScreenState extends State<MindmapScreen>
             mainAxisSize: MainAxisSize.min,
             children: [
                _toolbarBtn(Icons.add, () => _addNodeAt(Offset(x + nodeWidth + 50, y), parentId: node['id'])),
-               _toolbarBtn(Icons.link, () {
+               _toolbarBtn(Icons.linear_scale, () { // Renamed from link to avoid confusion
                   setState(() {
                     _linkingFromId = node['id'];
                     _linkingToPoint = Offset(x + nodeWidth/2, y + nodeHeight/2);
                   });
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Tap another node to link'), duration: Duration(milliseconds: 1000)),
+                    const SnackBar(content: Text('Tap another node to connect'), duration: Duration(milliseconds: 1000)),
                   );
                }),
+               _toolbarBtn(hasLink ? Icons.link_off : Icons.add_link, () => _editNodeURL(node), color: hasLink ? Colors.blue : Colors.black87),
                _toolbarBtn(Icons.edit, () => _renameNode(node)),
                _toolbarBtn(Icons.palette, () => _pickColor(node)),
                Container(width: 1, height: 20, color: Colors.grey.shade300, margin: const EdgeInsets.symmetric(horizontal: 4)),
@@ -878,6 +893,35 @@ class _MindmapScreenState extends State<MindmapScreen>
         ),
       ),
     );
+  }
+
+  Future<void> _editNodeURL(Map<String, dynamic> node) async {
+    final initial = (node['link'] as String?) ?? '';
+    final ctrl = TextEditingController(text: initial);
+    final result = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Add Attachment / Link'),
+        content: TextField(
+          controller: ctrl, 
+          decoration: const InputDecoration(
+            labelText: 'URL',
+            hintText: 'https://example.com',
+            prefixIcon: Icon(Icons.link),
+          ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+          TextButton(onPressed: () => Navigator.pop(ctx, ctrl.text.trim()), child: const Text('Save')),
+        ],
+      ),
+    );
+
+    if (result != null) {
+      final updated = Map<String, dynamic>.from(node);
+      updated['link'] = result;
+      _syncNode(updated);
+    }
   }
 
   Widget _toolbarBtn(IconData icon, VoidCallback onTap, {Color color = Colors.black87}) {

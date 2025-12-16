@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:app/models/collaboration.dart';
 import 'package:app/widgets/creative_toolbar.dart';
@@ -112,17 +113,33 @@ class _TimelineScreenState extends State<TimelineScreen> {
   }
 
   void _loadMilestones() {
-    final data = widget.collaboration?.toolData['timeline_milestones'];
+    var data = widget.collaboration?.toolData['timeline_milestones'];
+    if (data == null && widget.collaboration?.toolData['timelineData'] != null) {
+      try {
+        final decoded = jsonDecode(widget.collaboration!.toolData['timelineData']);
+        if (decoded is List) {
+          data = decoded;
+        }
+      } catch (e) {
+        print('Error parsing timelineData: $e');
+      }
+    }
+
     if (data is List) {
+      final List<Map<String, dynamic>> loaded = [];
+      for (final item in data) {
+         if (item == null) continue;
+         try {
+           final m = _sanitizeMilestone(Map<String, dynamic>.from(item));
+           if (m.isNotEmpty) {
+             loaded.add(m);
+           }
+         } catch (e) { 
+           print('Error processing timeline item: $e');
+         }
+      }
       setState(() {
-        _milestones = data.map((e) {
-          final m = Map<String, dynamic>.from(e);
-          // If the DB has corrupted "action" objects in the list, we filter them 
-          // either here or rely on sanitize to fix them.
-          // Sanitize will give them a valid ID/label, making them harmless ghosts.
-          // Better to filter if possible, but strict sanitization prevents crashes.
-          return _sanitizeMilestone(m);
-        }).toList();
+        _milestones = loaded;
       });
     }
   }

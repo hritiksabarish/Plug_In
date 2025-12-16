@@ -25,11 +25,14 @@ class WebSocketService {
 
     // Hardcoded IP for mobile testing (Updated)
     String url = 'wss://snp-tech-backend.hf.space/ws';
-    /*
+    
+    /* 
     String url = 'ws://localhost:8080/ws';
     if (!kIsWeb) {
       if (defaultTargetPlatform == TargetPlatform.android) {
         url = 'ws://10.0.2.2:8080/ws';
+      } else {
+        url = 'ws://localhost:8080/ws';
       }
     }
     */

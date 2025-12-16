@@ -132,27 +132,94 @@ class _CollaborationScreenState extends State<CollaborationScreen> with TickerPr
 
   void _openProject(Map<String, dynamic> project) {
     setState(() => _selectedProject = project);
-    WebSocketService().connect(project['id'], _currentUserEmail);
+    // WebSocket connection is handled by the specific screen (MindmapScreen, etc.)
+    // WebSocketService().connect(project['id'], _currentUserEmail);
 
     final title = (project['title'] as String).toLowerCase();
     
     Widget screen;
     // Simple heuristic for now, ideal would be a 'type' field in DB
+    Future<void> saveProject(Collaboration c) async {
+       print('Saving project: ${c.id}');
+       try {
+           // Serialize tool data back to JSON strings for the API
+           String? mmData, fcData, tlData;
+           
+           if (c.toolData.containsKey('mindmap_nodes') || c.toolData.containsKey('mindmapData')) {
+             if (c.toolData['mindmap_nodes'] != null) {
+                try {
+                  mmData = jsonEncode({'nodes': c.toolData['mindmap_nodes']});
+                } catch (e) {
+                  print('ERROR encoding mindmap nodes: $e');
+                }
+             } else {
+                mmData = c.toolData['mindmapData'];
+             }
+           }
+           
+           if (c.toolData.containsKey('timeline_milestones') || c.toolData.containsKey('timelineData')) {
+              if (c.toolData['timeline_milestones'] != null) {
+                 try {
+                   tlData = jsonEncode(c.toolData['timeline_milestones']);
+                 } catch (e) {
+                   print('ERROR encoding timeline: $e');
+                 }
+              } else {
+                 tlData = c.toolData['timelineData'];
+              }
+           }
+           
+           if (c.toolData.containsKey('flowchart_nodes') || c.toolData.containsKey('flowchartData')) {
+              if (c.toolData['flowchart_nodes'] != null) {
+                 try {
+                   fcData = jsonEncode({
+                     'nodes': c.toolData['flowchart_nodes'],
+                     'connections': c.toolData['flowchart_connections']
+                   });
+                 } catch (e) {
+                   print('ERROR encoding flowchart: $e');
+                 }
+              } else {
+                 fcData = c.toolData['flowchartData'];
+              }
+           }
+    
+           print('Updating DB with: MM=${mmData?.length} chars, FC=${fcData?.length}, TL=${tlData?.length}');
+           final success = await _roleDatabase.updateProjectData(c.id, mindmapData: mmData, flowchartData: fcData, timelineData: tlData);
+           print('Update success: $success');
+       } catch (e) {
+         print('CRITICAL ERROR in saveProject: $e');
+       }
+    }
+
+    // Create a mutable collaboration object that the screen can update
+    final collaboration = Collaboration.fromMap(project);
+
     if (title.contains('mindmap')) {
       screen = MindmapScreen(
-        collaboration: Collaboration.fromMap(project), 
+        collaboration: collaboration, 
         canEdit: true, 
-        onSave: () async {
-           // Auto-save logic if needed, usually handled inside screen
-        }
+        onSave: () => saveProject(collaboration),
       );
     } else if (title.contains('flowchart')) {
-       screen = FlowchartScreen(collaboration: Collaboration.fromMap(project));
+       screen = FlowchartScreen(
+         collaboration: collaboration, 
+         canEdit: true,
+         onSave: () => saveProject(collaboration),
+       );
     } else if (title.contains('timeline')) {
-       screen = TimelineScreen(collaboration: Collaboration.fromMap(project));
+       screen = TimelineScreen(
+         collaboration: collaboration, 
+         canEdit: true,
+         onSave: () => saveProject(collaboration),
+       );
     } else {
        // Default fallback or prompt
-       screen = MindmapScreen(collaboration: Collaboration.fromMap(project), canEdit: true);
+       screen = MindmapScreen(
+         collaboration: collaboration, 
+         canEdit: true,
+         onSave: () => saveProject(collaboration),
+       );
     }
 
     Navigator.of(context).push(
@@ -217,7 +284,7 @@ class _CollaborationScreenState extends State<CollaborationScreen> with TickerPr
                             tabs: const [
                               Tab(text: 'Projects'),
                               Tab(text: 'Polls'),
-                              Tab(text: 'Team'),
+                              Tab(text: 'Templates'),
                             ],
                           ),
                         ),
@@ -234,7 +301,7 @@ class _CollaborationScreenState extends State<CollaborationScreen> with TickerPr
                     children: [
                       _buildProjectsList(isDark),
                       _buildPollsTab(isDark),
-                      _buildTeamTab(isDark),
+                      _buildTemplatesTab(isDark),
                     ],
                   ),
           ),
@@ -702,42 +769,202 @@ class _CollaborationScreenState extends State<CollaborationScreen> with TickerPr
     });
   }
 
-  Widget _buildTeamTab(bool isDark) {
-    if (_selectedProject == null) return const Center(child: Text('Select a project first'));
-    
-    final members = [
-      {'email': _selectedProject!['ownerId'], 'role': 'OWNER'},
-      ...(_selectedProject!['activeUsers'] as List? ?? []).map((e) => {'email': e, 'role': 'ACTIVE'}),
-    ];
-    // This assumes simplified local data, real data would need a full member list from DB
+  Widget _buildTemplatesTab(bool isDark) {
+    if (!_canCreate) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.lock, size: 64, color: Colors.grey.shade400),
+            const SizedBox(height: 16),
+            Text('Templates restricted to creators', style: TextStyle(color: Colors.grey.shade600)),
+          ],
+        ),
+      );
+    }
 
-    return ListView.builder(
-      itemCount: members.length + 1, // +1 for Add Button
+    final templates = [
+      {'title': 'Brainstorming', 'type': 'Mindmap', 'desc': 'Central idea with branches', 'icon': Icons.psychology, 'color': Colors.orangeAccent},
+      {'title': 'Project Roadmap', 'type': 'Timeline', 'desc': 'Quarterly phases setup', 'icon': Icons.timeline, 'color': Colors.blueAccent},
+      {'title': 'User Flow', 'type': 'Flowchart', 'desc': 'Start to End process', 'icon': Icons.account_tree, 'color': Colors.greenAccent},
+      {'title': 'SWOT Analysis', 'type': 'Mindmap', 'desc': 'Strengths, Weaknesses, etc', 'icon': Icons.grid_view, 'color': Colors.purpleAccent},
+    ];
+
+    return GridView.builder(
       padding: const EdgeInsets.all(16),
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 2,
+        crossAxisSpacing: 16,
+        mainAxisSpacing: 16,
+        childAspectRatio: 1.1,
+      ),
+      itemCount: templates.length,
       itemBuilder: (context, index) {
-        if (index == 0) {
-           return Padding(
-             padding: const EdgeInsets.only(bottom: 16),
-             child: ElevatedButton.icon(
-               onPressed: _addMember,
-               icon: const Icon(Icons.person_add),
-               label: const Text('Add Team Member'),
-               style: ElevatedButton.styleFrom(
-                 padding: const EdgeInsets.all(16),
-                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-               ),
-             ),
-           );
-        }
-        final m = members[index - 1];
-        return ListTile(
-          leading: CircleAvatar(child: Text((m['email'] as String)[0].toUpperCase())),
-          title: Text(m['email'] as String),
-          subtitle: Text(m['role'] as String),
-          trailing: m['role'] == 'OWNER' ? const Icon(Icons.star, color: Colors.amber) : null,
+        final t = templates[index];
+        return InkWell(
+          onTap: () => _createFromTemplate(t['type'] as String, t['title'] as String),
+          borderRadius: BorderRadius.circular(16),
+          child: Container(
+            decoration: BoxDecoration(
+              color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: [
+                 if(!isDark) BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 8, offset: const Offset(0, 2)),
+              ],
+              border: Border.all(color: (t['color'] as Color).withOpacity(0.3)),
+            ),
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                CircleAvatar(
+                  backgroundColor: (t['color'] as Color).withOpacity(0.1),
+                  radius: 24,
+                  child: Icon(t['icon'] as IconData, color: t['color'] as Color),
+                ),
+                const SizedBox(height: 12),
+                Text(t['title'] as String, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                const SizedBox(height: 4),
+                Text(t['desc'] as String, textAlign: TextAlign.center, style: TextStyle(fontSize: 12, color: Colors.grey.shade600)),
+              ],
+            ),
+          ),
         );
       },
     );
+  }
+
+  Future<void> _createFromTemplate(String type, String templateName) async {
+    final titleCtrl = TextEditingController(text: '$templateName Project');
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text('Use $templateName Template?'),
+        content: TextField(controller: titleCtrl, decoration: const InputDecoration(labelText: 'Project Name')),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+          ElevatedButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Create')),
+        ],
+      ),
+    );
+
+    if (confirm != true) return;
+
+    final newProject = await _roleDatabase.createProject(titleCtrl.text + ' ($type)', _currentUserEmail);
+    if (newProject == null) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Failed to create project')));
+      return;
+    }
+
+    // Populate data based on template
+    String? mmData, fcData, tlData;
+    
+
+    if (templateName == 'Brainstorming' && type == 'Mindmap') {
+      final rootId = 'root_${DateTime.now().millisecondsSinceEpoch}';
+      mmData = jsonEncode({
+        'rootId': rootId,
+        'nodes': [
+          // Central Node
+          {'id': rootId, 'label': 'Core Idea', 'x': 0.0, 'y': 0.0, 'color': 0xFF6200EA, 'iconCodePoint': 0xeb3c}, // Lightbulb
+          // Branch 1 - Top Left
+          {'id': '${rootId}_1', 'parentId': rootId, 'label': 'Concept A', 'x': -200.0, 'y': -150.0, 'color': 0xFF00BFA5, 'iconCodePoint': 0xe3e3}, // Star
+          {'id': '${rootId}_1_1', 'parentId': '${rootId}_1', 'label': 'Detail 1', 'x': -350.0, 'y': -200.0, 'color': 0xFF00BFA5},
+          {'id': '${rootId}_1_2', 'parentId': '${rootId}_1', 'label': 'Detail 2', 'x': -350.0, 'y': -100.0, 'color': 0xFF00BFA5},
+          // Branch 2 - Top Right
+          {'id': '${rootId}_2', 'parentId': rootId, 'label': 'Concept B', 'x': 200.0, 'y': -150.0, 'color': 0xFFFFAB00, 'iconCodePoint': 0xf04b}, // Finance
+          {'id': '${rootId}_2_1', 'parentId': '${rootId}_2', 'label': 'Pro A', 'x': 350.0, 'y': -200.0, 'color': 0xFFFFAB00},
+          {'id': '${rootId}_2_2', 'parentId': '${rootId}_2', 'label': 'Con A', 'x': 350.0, 'y': -100.0, 'color': 0xFFFFAB00},
+          // Branch 3 - Bottom Left
+          {'id': '${rootId}_3', 'parentId': rootId, 'label': 'Concept C', 'x': -200.0, 'y': 150.0, 'color': 0xFF2962FF, 'iconCodePoint': 0xe84f}, // Build
+          {'id': '${rootId}_3_1', 'parentId': '${rootId}_3', 'label': 'Cost', 'x': -350.0, 'y': 100.0, 'color': 0xFF2962FF},
+          // Branch 4 - Bottom Right
+          {'id': '${rootId}_4', 'parentId': rootId, 'label': 'Concept D', 'x': 200.0, 'y': 150.0, 'color': 0xFFD500F9, 'iconCodePoint': 0xea80}, // Rocket
+          {'id': '${rootId}_4_1', 'parentId': '${rootId}_4', 'label': 'Risks', 'x': 350.0, 'y': 100.0, 'color': 0xFFD500F9},
+        ]
+      });
+    } else if (templateName == 'Project Roadmap' && type == 'Timeline') {
+      tlData = jsonEncode([
+        {'id': 'm1', 'label': 'Q1: Planning', 'x': 100.0, 'y': -50.0, 'color': 0xFF2196F3, 'notes': 'Define scope & requirements', 'link': 'https://jira.com/planning'},
+        {'id': 'm2', 'label': 'Q2: Design', 'x': 400.0, 'y': 50.0, 'color': 0xFF9C27B0, 'notes': 'UI/UX Prototypes', 'link': 'https://figma.com/file/123'},
+        {'id': 'm3', 'label': 'Q3: Development', 'x': 700.0, 'y': -50.0, 'color': 0xFF4CAF50, 'notes': 'MVP Build'},
+        {'id': 'm4', 'label': 'Q4: Launch', 'x': 1000.0, 'y': 50.0, 'color': 0xFFFF9800, 'notes': 'Go-to-market', 'link': 'https://launch.com'},
+        {'id': 'm5', 'label': 'Post-Launch', 'x': 1300.0, 'y': 0.0, 'color': 0xFF607D8B, 'notes': 'Feedback loop'},
+      ]);
+    } else if (templateName == 'User Flow' && type == 'Flowchart') {
+      fcData = jsonEncode({
+        'nodes': [
+          {'id': 'n1', 'label': 'Start', 'x': 300.0, 'y': 50.0, 'shape': 'circle', 'width': 100.0, 'height': 50.0},
+          {'id': 'n2', 'label': 'Login Page', 'x': 250.0, 'y': 150.0, 'shape': 'rectangle', 'width': 200.0, 'height': 80.0},
+          {'id': 'n3', 'label': 'Enter Creds', 'x': 250.0, 'y': 280.0, 'shape': 'parallelogram', 'width': 200.0, 'height': 80.0},
+          {'id': 'n4', 'label': 'Valid?', 'x': 280.0, 'y': 400.0, 'shape': 'diamond', 'width': 140.0, 'height': 100.0},
+          {'id': 'n5', 'label': 'Dashboard', 'x': 250.0, 'y': 550.0, 'shape': 'rectangle', 'width': 200.0, 'height': 80.0},
+          {'id': 'n6', 'label': 'Error Msg', 'x': 500.0, 'y': 410.0, 'shape': 'rectangle', 'width': 150.0, 'height': 80.0},
+          {'id': 'n7', 'label': 'End', 'x': 300.0, 'y': 700.0, 'shape': 'circle', 'width': 100.0, 'height': 50.0},
+        ],
+        'connections': [
+           {'id': 'c1', 'fromId': 'n1', 'toId': 'n2', 'label': 'Open App'},
+           {'id': 'c2', 'fromId': 'n2', 'toId': 'n3'},
+           {'id': 'c3', 'fromId': 'n3', 'toId': 'n4'},
+           {'id': 'c4', 'fromId': 'n4', 'toId': 'n5', 'label': 'Yes'},
+           {'id': 'c5', 'fromId': 'n4', 'toId': 'n6', 'label': 'No'},
+           {'id': 'c6', 'fromId': 'n6', 'toId': 'n2', 'label': 'Retry'},
+           {'id': 'c7', 'fromId': 'n5', 'toId': 'n7'},
+        ]
+      });
+    } else if (templateName == 'SWOT Analysis' && type == 'Mindmap') {
+      final rootId = 'root_${DateTime.now().millisecondsSinceEpoch}';
+      mmData = jsonEncode({
+        'rootId': rootId,
+        'nodes': [
+          {'id': rootId, 'label': 'SWOT Analysis', 'x': 0.0, 'y': 0.0, 'color': 0xFF212121, 'iconCodePoint': 0xe06f}, // Assessment
+          // STRENGTHS (Green) - Top Left
+          {'id': 'swot_S', 'parentId': rootId, 'label': 'STRENGTHS', 'x': -300.0, 'y': -200.0, 'color': 0xFF43A047, 'iconCodePoint': 0xe8e8}, // Check circle
+          {'id': 'swot_S1', 'parentId': 'swot_S', 'label': 'Internal Positive', 'x': -500.0, 'y': -250.0, 'color': 0xFFA5D6A7},
+          {'id': 'swot_S2', 'parentId': 'swot_S', 'label': 'Advantages', 'x': -500.0, 'y': -150.0, 'color': 0xFFA5D6A7},
+          
+          // WEAKNESSES (Red/Orange) - Top Right
+          {'id': 'swot_W', 'parentId': rootId, 'label': 'WEAKNESSES', 'x': 300.0, 'y': -200.0, 'color': 0xFFE53935, 'iconCodePoint': 0xe002}, // Warning
+          {'id': 'swot_W1', 'parentId': 'swot_W', 'label': 'Internal Negative', 'x': 500.0, 'y': -250.0, 'color': 0xFFEF9A9A},
+          {'id': 'swot_W2', 'parentId': 'swot_W', 'label': 'Limitations', 'x': 500.0, 'y': -150.0, 'color': 0xFFEF9A9A},
+          
+          // OPPORTUNITIES (Blue) - Bottom Left
+          {'id': 'swot_O', 'parentId': rootId, 'label': 'OPPORTUNITIES', 'x': -300.0, 'y': 200.0, 'color': 0xFF1E88E5, 'iconCodePoint': 0xea80}, // Rocket
+          {'id': 'swot_O1', 'parentId': 'swot_O', 'label': 'External Positive', 'x': -500.0, 'y': 150.0, 'color': 0xFF90CAF9},
+          {'id': 'swot_O2', 'parentId': 'swot_O', 'label': 'Trends', 'x': -500.0, 'y': 250.0, 'color': 0xFF90CAF9},
+          
+          // THREATS (Amber) - Bottom Right
+          {'id': 'swot_T', 'parentId': rootId, 'label': 'THREATS', 'x': 300.0, 'y': 200.0, 'color': 0xFFFFB300, 'iconCodePoint': 0xe14b}, // Dangerous
+          {'id': 'swot_T1', 'parentId': 'swot_T', 'label': 'External Negative', 'x': 500.0, 'y': 150.0, 'color': 0xFFFFE082},
+          {'id': 'swot_T2', 'parentId': 'swot_T', 'label': 'Competitors', 'x': 500.0, 'y': 250.0, 'color': 0xFFFFE082},
+        ]
+      });
+    }
+
+    if (mmData != null || fcData != null || tlData != null) {
+       await _roleDatabase.updateProjectData(newProject['id'], mindmapData: mmData, flowchartData: fcData, timelineData: tlData);
+    }
+    
+    await _loadData();
+    // Open new project
+    final updatedList = await _roleDatabase.getUserProjects(_currentUserEmail);
+    try {
+      var freshProject = updatedList.firstWhere((p) => p['id'] == newProject['id']);
+      
+      // OPTIMISTIC UPDATE: Inject data locally in case backend hasn't synced yet
+      // This ensures the screen opens with data even if the FETCH was too fast.
+      freshProject = Map<String, dynamic>.from(freshProject); // Make mutable copy
+      freshProject['toolData'] = <String, dynamic>{
+        if (mmData != null) 'mindmapData': mmData,
+        if (fcData != null) 'flowchartData': fcData,
+        if (tlData != null) 'timelineData': tlData,
+        ...(freshProject['toolData'] ?? {}),
+      };
+
+      _openProject(freshProject);
+    } catch (e) {
+      print('Error opening new template project: $e');
+    }
   }
 
   // --- Logic Methods (Preserved & Adapted) ---
