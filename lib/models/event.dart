@@ -6,6 +6,8 @@ class Event {
   final String venue;
   final bool isPublic;
   final String? createdBy;
+  final bool registrationStarted;
+  final String? imageUrl;
 
   Event({
     this.id,
@@ -15,6 +17,8 @@ class Event {
     this.venue = 'TBD',
     this.isPublic = true,
     this.createdBy,
+    this.registrationStarted = false,
+    this.imageUrl,
   });
 
   factory Event.fromJson(Map<String, dynamic> json) {
@@ -24,8 +28,10 @@ class Event {
       date: json['date'] != null ? DateTime.parse(json['date']) : DateTime.now(),
       description: json['description'],
       venue: json['venue'] ?? 'TBD',
-      isPublic: json['public'] ?? true, // Backend helper isPublic() maps to 'public' in JSON often, or check standard serialization
+      isPublic: json['public'] ?? true, 
       createdBy: json['createdBy'],
+      registrationStarted: json['registrationStarted'] ?? false,
+      imageUrl: json['imageUrl'],
     );
   }
 
@@ -38,6 +44,8 @@ class Event {
       'venue': venue,
       'public': isPublic,
       'createdBy': createdBy,
+      'registrationStarted': registrationStarted,
+      'imageUrl': imageUrl,
     };
   }
 }

@@ -3,6 +3,9 @@ import 'package:app/models/event.dart';
 import 'package:app/services/role_database_service.dart';
 import 'package:app/models/role.dart';
 import 'package:intl/intl.dart';
+import 'package:image_picker/image_picker.dart';
+import 'dart:convert';
+import 'dart:typed_data';
 
 class EventsScreen extends StatefulWidget {
   const EventsScreen({super.key});
@@ -49,8 +52,14 @@ class _EventsScreenState extends State<EventsScreen> {
     final titleController = TextEditingController(text: event?.title ?? '');
     final descriptionController = TextEditingController(text: event?.description ?? '');
     final venueController = TextEditingController(text: event?.venue ?? '');
+    // final imageUrlController = TextEditingController(text: event?.imageUrl ?? ''); // Removed API text field
+    
     DateTime selectedDate = event?.date ?? DateTime.now();
     bool isPublic = event?.isPublic ?? true;
+    bool registrationStarted = event?.registrationStarted ?? false;
+    
+    String? currentImageUrl = event?.imageUrl;
+    Uint8List? newImageBytes;
 
     await showDialog(
       context: context,
@@ -61,6 +70,60 @@ class _EventsScreenState extends State<EventsScreen> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
+                // Image Preview / Picker
+                GestureDetector(
+                  onTap: () async {
+                    final ImagePicker picker = ImagePicker();
+                    final XFile? image = await picker.pickImage(source: ImageSource.gallery, imageQuality: 50); // Quality 50 to save space
+                    if (image != null) {
+                       final bytes = await image.readAsBytes();
+                       setState(() {
+                         newImageBytes = bytes;
+                       });
+                    }
+                  },
+                  child: Container(
+                    height: 150,
+                    width: double.infinity,
+                    decoration: BoxDecoration(
+                      color: Colors.grey[200],
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.grey[400]!),
+                      image: newImageBytes != null 
+                          ? DecorationImage(image: MemoryImage(newImageBytes!), fit: BoxFit.cover)
+                          : (currentImageUrl != null && currentImageUrl!.isNotEmpty)
+                              ? DecorationImage(
+                                  image: currentImageUrl!.startsWith('http') 
+                                      ? NetworkImage(currentImageUrl!) 
+                                      : MemoryImage(base64Decode(currentImageUrl!)) as ImageProvider,
+                                  fit: BoxFit.cover
+                                )
+                              : null
+                    ),
+                    child: (newImageBytes == null && (currentImageUrl == null || currentImageUrl!.isEmpty))
+                        ? const Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(Icons.add_a_photo, size: 40, color: Colors.grey),
+                              SizedBox(height: 8),
+                              Text('Tap to upload banner', style: TextStyle(color: Colors.grey)),
+                            ],
+                          )
+                        : null,
+                  ),
+                ),
+                if (newImageBytes != null || (currentImageUrl != null && currentImageUrl!.isNotEmpty))
+                    TextButton.icon(
+                        onPressed: () {
+                            setState(() {
+                                newImageBytes = null;
+                                currentImageUrl = null;
+                            });
+                        }, 
+                        icon: const Icon(Icons.delete, color: Colors.red, size: 16),
+                        label: const Text('Remove Image', style: TextStyle(color: Colors.red))
+                    ),
+                
                 TextField(
                   controller: titleController,
                   decoration: const InputDecoration(labelText: 'Title'),
@@ -100,6 +163,12 @@ class _EventsScreenState extends State<EventsScreen> {
                   value: isPublic,
                   onChanged: (val) => setState(() => isPublic = val),
                 ),
+                SwitchListTile(
+                  title: const Text('Enable Registration'),
+                  subtitle: const Text('Show "Register" button to guests?'),
+                  value: registrationStarted,
+                  onChanged: (val) => setState(() => registrationStarted = val),
+                ),
               ],
             ),
           ),
@@ -110,6 +179,10 @@ class _EventsScreenState extends State<EventsScreen> {
             ),
             ElevatedButton(
               onPressed: () async {
+                final String? finalBase64Image = newImageBytes != null 
+                    ? base64Encode(newImageBytes!) 
+                    : currentImageUrl;
+
                 final newEventData = Event(
                   id: event?.id,
                   title: titleController.text,
@@ -117,6 +190,8 @@ class _EventsScreenState extends State<EventsScreen> {
                   venue: venueController.text,
                   date: selectedDate,
                   isPublic: isPublic,
+                  imageUrl: finalBase64Image,
+                  registrationStarted: registrationStarted,
                 ).toJson();
                 
                 if (isEditing) {
@@ -125,8 +200,8 @@ class _EventsScreenState extends State<EventsScreen> {
                    await _databaseService.createEvent(newEventData);
                 }
 
-                if (mounted) Navigator.pop(context);
-                _loadEvents();
+                if (context.mounted) Navigator.pop(context);
+                if (mounted) _loadEvents();
               },
               child: Text(isEditing ? 'Save' : 'Add'),
             ),

@@ -597,6 +597,22 @@ class RoleBasedDatabaseService {
 
   // -------------------- ATTENDANCE METHODS --------------------
 
+  Future<bool> registerForEvent(String eventId, Map<String, String> registrationData) async {
+    try {
+      final url = Uri.parse('${_getBaseUrl()}/api/events/$eventId/register');
+      final response = await http.post(
+        url,
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode(registrationData),
+      );
+      
+      return response.statusCode == 200;
+    } catch (e) {
+      print('Error registering for event: $e');
+      return false;
+    }
+  }
+
   Future<List<Map<String, dynamic>>> fetchAttendanceRecords() async {
     try {
        final url = Uri.parse('${_getBaseUrl()}/api/attendance');
