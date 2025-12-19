@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:app/services/auth_service.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -16,7 +17,18 @@ class _SplashScreenState extends State<SplashScreen> {
     _checkAuth();
   }
 
+  Future<void> _requestPermissions() async {
+    Map<Permission, PermissionStatus> statuses = await [
+      Permission.camera,
+      Permission.storage,
+      Permission.photos,
+      Permission.notification,
+    ].request();
+    print("Permissions status: $statuses");
+  }
+
   Future<void> _checkAuth() async {
+    await _requestPermissions();
     await Future.delayed(const Duration(seconds: 1)); // Show splash for a moment
     if (!mounted) return;
 

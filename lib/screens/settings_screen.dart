@@ -367,24 +367,22 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           return;
                         }
                         
-                        final success = await _roleDatabase.changePassword(
+
+                        final (success, message) = await _roleDatabase.changePassword(
                           _currentUser!.email,
                           newPassController.text,
                         );
                         
                         if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text(message)),
+                          );
+                          
                           if (success) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text('Password changed successfully')),
-                            );
                             // Clear fields
                             newPassController.clear();
                             confirmPassController.clear();
                             setState(() => showPasswordSection = false);
-                          } else {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text('Failed to change password')),
-                            );
                           }
                         }
                       },

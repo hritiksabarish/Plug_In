@@ -15,19 +15,28 @@ class RoleBasedDatabaseService {
 
   RoleBasedDatabaseService._internal();
 
-  late SharedPreferences _prefs;
+  SharedPreferences? _prefs;
   static const String _usersKey = 'users_database';
   static const String _currentUserKey = 'current_user';
+  bool _isInitialized = false;
 
   /// Initialize the service
   Future<void> initialize() async {
+    if (_isInitialized) return;
     _prefs = await SharedPreferences.getInstance();
+    _isInitialized = true;
     await _initializeDefaultUsers();
+  }
+
+  Future<void> _ensureInitialized() async {
+    if (!_isInitialized || _prefs == null) {
+      await initialize();
+    }
   }
 
   /// Initialize default admin and test users
   Future<void> _initializeDefaultUsers() async {
-    final usersJson = _prefs.getString(_usersKey);
+    final usersJson = _prefs?.getString(_usersKey);
 
     if (usersJson == null) {
       // Create default users if database is empty
@@ -154,11 +163,11 @@ class RoleBasedDatabaseService {
 
 
   /// Authenticate user with username and password via Backend API
-  Future<UserLoginDetails?> authenticateUser(
+  Future<(UserLoginDetails?, String?)> authenticateUser(
       String username, String password) async {
     final url = Uri.parse('${_getBaseUrl()}/api/auth/login');
     try {
-      print('Attempting login to: $url'); // Debug log
+      print('Attempting login to: $url');
       
       final response = await http.post(
         url,
@@ -167,12 +176,11 @@ class RoleBasedDatabaseService {
           'username': username,
           'password': password, 
         }),
-      ).timeout(const Duration(seconds: 5)); // Fail fast (5s) for better UX
+      ).timeout(const Duration(seconds: 10));
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         
-        // Map Backend User to Frontend UserLoginDetails
         final user = UserLoginDetails(
           username: data['displayName'] ?? data['email'],
           email: data['email'],
@@ -185,15 +193,20 @@ class RoleBasedDatabaseService {
           avatarUrl: data['avatarUrl'],
         );
         
-        // Save to local session
         await setCurrentUser(user);
-        return user;
+        return (user, null); // Success
+      } else if (response.statusCode == 404) {
+        return (null, "Username or Email not found.");
+      } else if (response.statusCode == 401) {
+        return (null, "Incorrect password.");
+      } else if (response.statusCode == 429) {
+        return (null, "Too many attempts. Try later.");
       } else {
-        throw Exception('Login failed: ${response.statusCode} - ${response.body}');
+        return (null, "Server Error: ${response.statusCode}");
       }
     } catch (e) {
       print('Error authenticating user at $url: $e');
-      throw Exception('Connection failed to $url: $e');
+      return (null, "Connection failed. Check internet.");
     }
   }
 
@@ -254,7 +267,8 @@ class RoleBasedDatabaseService {
 
     // 2. Fallback to Local Storage
     try {
-      final usersJson = _prefs.getString(_usersKey);
+      await _ensureInitialized();
+      final usersJson = _prefs?.getString(_usersKey);
       if (usersJson == null) {
         return [];
       }
@@ -282,9 +296,10 @@ class RoleBasedDatabaseService {
   /// Save users to SharedPreferences
   Future<void> _saveUsers(List<UserLoginDetails> users) async {
     try {
+      await _ensureInitialized();
       final jsonList = users.map((u) => u.toJson()).toList();
       final encoded = jsonEncode(jsonList);
-      await _prefs.setString(_usersKey, encoded);
+      await _prefs?.setString(_usersKey, encoded);
     } catch (e) {
       print('Error saving users: $e');
     }
@@ -293,7 +308,8 @@ class RoleBasedDatabaseService {
   /// Set current logged-in user
   Future<void> setCurrentUser(UserLoginDetails user) async {
     try {
-      await _prefs.setString(_currentUserKey, jsonEncode(user.toJson()));
+      await _ensureInitialized();
+      await _prefs?.setString(_currentUserKey, jsonEncode(user.toJson()));
     } catch (e) {
       print('Error setting current user: $e');
     }
@@ -302,7 +318,8 @@ class RoleBasedDatabaseService {
   /// Get current logged-in user
   Future<UserLoginDetails?> getCurrentUser() async {
     try {
-      final userJson = _prefs.getString(_currentUserKey);
+      await _ensureInitialized();
+      final userJson = _prefs?.getString(_currentUserKey);
 
       if (userJson == null) {
         return null;
@@ -318,7 +335,8 @@ class RoleBasedDatabaseService {
   /// Clear current user (logout)
   Future<void> clearCurrentUser() async {
     try {
-      await _prefs.remove(_currentUserKey);
+      await _ensureInitialized();
+      await _prefs?.remove(_currentUserKey);
     } catch (e) {
       print('Error clearing current user: $e');
     }
@@ -471,9 +489,10 @@ class RoleBasedDatabaseService {
   }
 
   /// Change user password via Backend API
-  Future<bool> changePassword(String username, String newPassword) async {
+  Future<(bool, String)> changePassword(String username, String newPassword) async {
     try {
-      final url = Uri.parse('${_getBaseUrl()}/api/users/$username/password');
+      final encodedUsername = Uri.encodeComponent(username);
+      final url = Uri.parse('${_getBaseUrl()}/api/users/$encodedUsername/password');
       final response = await http.put(
         url,
         headers: {'Content-Type': 'application/json'},
@@ -482,12 +501,15 @@ class RoleBasedDatabaseService {
         }),
       );
 
-      return response.statusCode == 200;
+      if (response.statusCode == 200) {
+        return (true, 'Password updated successfully');
+      } else {
+        return (false, 'Failed: ${response.statusCode} - ${response.body}');
+      }
     } catch (e) {
       print('Error changing password: $e');
-      return false;
+      return (false, 'Connection error: $e');
     }
-
   }
 
   Future<bool> changeUserRole(String username, String newRole) async {

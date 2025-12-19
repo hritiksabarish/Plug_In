@@ -49,7 +49,7 @@ class AppDrawer extends StatelessWidget {
       },
       {
         'title': 'Settings',
-        'icon': const Icon(Icons.settings_outlined, size: 40, color: Colors.white),
+        'icon': const Icon(Icons.settings_outlined, size: 40, color: Colors.black),
         'destination': const SettingsScreen(),
       },
     ];

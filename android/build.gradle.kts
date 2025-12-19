@@ -1,3 +1,14 @@
+buildscript {
+    extra.apply {
+        set("kotlin_version", "1.9.23")
+    }
+    repositories {
+        google()
+        mavenCentral()
+    }
+}
+
+
 allprojects {
     repositories {
         google()
@@ -15,8 +26,16 @@ subprojects {
     val newSubprojectBuildDir: Directory = newBuildDir.dir(project.name)
     project.layout.buildDirectory.value(newSubprojectBuildDir)
 }
+
 subprojects {
     project.evaluationDependsOn(":app")
+    project.configurations.all {
+        resolutionStrategy {
+            force("androidx.core:core-ktx:1.13.1")
+            force("androidx.activity:activity-ktx:1.9.3")
+            force("androidx.activity:activity:1.9.3")
+        }
+    }
 }
 
 tasks.register<Delete>("clean") {

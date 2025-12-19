@@ -44,7 +44,7 @@ class _LoginScreenState extends State<LoginScreen> {
     setState(() { _isLoading = true; });
     
     try {
-      final user = await _roleDatabase.authenticateUser(
+      final (user, error) = await _roleDatabase.authenticateUser(
         _usernameController.text.trim(),
         _passwordController.text,
       );
@@ -52,15 +52,14 @@ class _LoginScreenState extends State<LoginScreen> {
       if (!mounted) return;
 
       if (user != null && user.isActive) {
-        await _roleDatabase.setCurrentUser(user);
         if (mounted) {
           Navigator.of(context).pushReplacementNamed('/dashboard');
         }
       } else {
         if (mounted) {
          ScaffoldMessenger.of(context).showSnackBar(
-           const SnackBar(
-             content: Text('Invalid username or password'),
+           SnackBar(
+             content: Text(error ?? 'Login failed'),
              backgroundColor: Colors.red,
            ),
          );
@@ -69,8 +68,8 @@ class _LoginScreenState extends State<LoginScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('An error occurred. Please try again.'),
+          SnackBar(
+            content: Text('Error: $e'),
             backgroundColor: Colors.red,
           ),
         );
