@@ -58,7 +58,7 @@ class _RegistrationDialogState extends State<RegistrationDialog> {
         if (success) {
           Navigator.of(context).pop();
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Registration Successful! Ticket sent to email.')),
+          const SnackBar(content: Text('Registration Successful! You will receive confirmation soon on your email.')),
           );
         } else {
           ScaffoldMessenger.of(context).showSnackBar(

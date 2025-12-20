@@ -193,8 +193,9 @@ class _CalendarScreenState extends State<CalendarScreen> {
   void _showAddDialog() {
     final titleCtrl = TextEditingController();
     final descCtrl = TextEditingController();
+    final venueCtrl = TextEditingController();
     String type = 'Event';
-    DateTime selectedTime = DateTime.now();
+    DateTime selectedTime = _selectedDay ?? DateTime.now(); // Start with currently selected day
     
     showDialog(
       context: context,
@@ -202,37 +203,60 @@ class _CalendarScreenState extends State<CalendarScreen> {
         builder: (context, setDialogState) {
           return AlertDialog(
             title: const Text('Add Schedule Entry'),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextField(controller: titleCtrl, decoration: const InputDecoration(labelText: 'Title')),
-                TextField(controller: descCtrl, decoration: const InputDecoration(labelText: 'Description')),
-                const SizedBox(height: 10),
-                DropdownButton<String>(
-                  value: type,
-                  isExpanded: true,
-                  items: ['Event', 'Meet (Online)', 'Meet (Offline)', 'Holiday', 'Exam']
-                    .map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
-                  onChanged: (v) => setDialogState(() => type = v!),
-                ),
-                const SizedBox(height: 10),
-                ListTile(
-                  title: Text('Time: ${DateFormat('jm').format(selectedTime)}'),
-                  trailing: const Icon(Icons.access_time),
-                  onTap: () async {
-                    final t = await showTimePicker(context: context, initialTime: TimeOfDay.now());
-                    if (t != null) {
-                      setDialogState(() {
-                        final now = DateTime.now();
-                        selectedTime = DateTime(
-                          _selectedDay!.year, _selectedDay!.month, _selectedDay!.day, 
-                          t.hour, t.minute
-                        );
-                      });
-                    }
-                  },
-                )
-              ],
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextField(controller: titleCtrl, decoration: const InputDecoration(labelText: 'Title')),
+                  TextField(controller: descCtrl, decoration: const InputDecoration(labelText: 'Description')),
+                  if (type.contains('Meet') || type == 'Event')
+                    TextField(controller: venueCtrl, decoration: const InputDecoration(labelText: 'Venue (for Announcement)')),
+                  const SizedBox(height: 10),
+                  DropdownButton<String>(
+                    value: type,
+                    isExpanded: true,
+                    items: ['Event', 'Meet (Online)', 'Meet (Offline)', 'Holiday', 'Exam']
+                      .map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
+                    onChanged: (v) => setDialogState(() => type = v!),
+                  ),
+                  const SizedBox(height: 10),
+                  ListTile(
+                    title: Text('Date: ${DateFormat('MMM d, y').format(selectedTime)}'),
+                    trailing: const Icon(Icons.calendar_today),
+                    onTap: () async {
+                      final d = await showDatePicker(
+                        context: context,
+                        initialDate: selectedTime,
+                        firstDate: DateTime(2023),
+                        lastDate: DateTime(2030),
+                      );
+                      if (d != null) {
+                        setDialogState(() {
+                          selectedTime = DateTime(
+                            d.year, d.month, d.day,
+                            selectedTime.hour, selectedTime.minute
+                          );
+                        });
+                      }
+                    },
+                  ),
+                  ListTile(
+                    title: Text('Time: ${DateFormat('jm').format(selectedTime)}'),
+                    trailing: const Icon(Icons.access_time),
+                    onTap: () async {
+                      final t = await showTimePicker(context: context, initialTime: TimeOfDay.fromDateTime(selectedTime));
+                      if (t != null) {
+                        setDialogState(() {
+                          selectedTime = DateTime(
+                            selectedTime.year, selectedTime.month, selectedTime.day, 
+                            t.hour, t.minute
+                          );
+                        });
+                      }
+                    },
+                  )
+                ],
+              ),
             ),
             actions: [
               TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
@@ -244,7 +268,8 @@ class _CalendarScreenState extends State<CalendarScreen> {
                     title: titleCtrl.text, 
                     description: descCtrl.text, 
                     date: selectedTime, 
-                    type: type, 
+                    type: type,
+                    venue: venueCtrl.text,
                     createdBy: 'admin' // Should fetch real user
                   );
                   await _service.createScheduleEntry(entry);

@@ -121,6 +121,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ? MemoryImage(base64Decode(_currentUser!.avatarUrl!.split(',').last))
                     : NetworkImage(_currentUser!.avatarUrl!) as ImageProvider)
                 : null,
+            fallbackText: _currentUser?.username,
           ),
 
           _SettingsTile(
@@ -193,7 +194,24 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 context: context,
                 applicationName: 'Slug N Plug',
                 applicationVersion: '1.0.1',
+                applicationIcon: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(color: Colors.blue[900], borderRadius: BorderRadius.circular(12)),
+                  child: const Icon(Icons.bolt, color: Colors.yellow, size: 32),
+                ),
                 applicationLegalese: '© 2025 Slug N Plug Club',
+                children: [
+                  const SizedBox(height: 24),
+                  const Text(
+                    'Founded in 2014, Slug N Plug (SnP) is a non-profit organization based in Chennai. We are a community of enthusiastic innovators, programmers, creators, and entrepreneurs committed to educating students in high-demand technical domains.',
+                    style: TextStyle(height: 1.5),
+                  ),
+                  const SizedBox(height: 16),
+                  const Text(
+                    'SnP organizes regular events where our volunteers wholeheartedly dedicate themselves to passing on their knowledge and crafting the best learning experiences.',
+                    style: TextStyle(height: 1.5),
+                  ),
+                ],
               );
             },
           ),
@@ -501,14 +519,17 @@ class _SettingsTile extends StatelessWidget {
   final String? subtitle;
   final VoidCallback onTap;
   final ImageProvider? customImage;
+  final String? fallbackText; // Added fallbackText
+
   const _SettingsTile({
-    super.key,
+    super.key, // Kept super.key
     required this.icon,
     required this.color,
     required this.title,
     this.subtitle,
     required this.onTap,
     this.customImage,
+    this.fallbackText, // Added fallbackText to constructor
   });
 
   @override
@@ -528,7 +549,9 @@ class _SettingsTile extends StatelessWidget {
             : CircleAvatar(
                 backgroundColor: color.withOpacity(0.1),
                 foregroundColor: color,
-                child: Icon(icon),
+                child: (fallbackText != null && fallbackText!.isNotEmpty) // Modified child logic
+                    ? Text(fallbackText![0].toUpperCase(), style: const TextStyle(fontWeight: FontWeight.bold))
+                    : Icon(icon),
               ),
         title: Text(title,
             style:

@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:convert';
 import 'dart:typed_data';
+import 'package:app/screens/registrations_screen.dart';
 
 class EventsScreen extends StatefulWidget {
   const EventsScreen({super.key});
@@ -325,6 +326,25 @@ class _EventCard extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             Text(event.description, style: theme.textTheme.bodyLarge),
+            
+            // View Registrations Button (Admin Only)
+            if (canEdit && event.registrationStarted)
+              Padding(
+                padding: const EdgeInsets.only(top: 12.0),
+                child: SizedBox(
+                   width: double.infinity,
+                   child: OutlinedButton.icon(
+                    onPressed: () {
+                      Navigator.push(
+                        context, 
+                        MaterialPageRoute(builder: (_) => RegistrationsScreen(event: event))
+                      );
+                    }, 
+                    icon: const Icon(Icons.people),
+                    label: Text('View Registrations (${event.registrations.length})'),
+                  ),
+                ),
+              ),
           ],
         ),
       ),
