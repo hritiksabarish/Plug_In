@@ -254,7 +254,7 @@ class _MembersScreenState extends State<MembersScreen> {
   void _showRoleDialog(UserLoginDetails user) {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (dialogContext) => AlertDialog(
         backgroundColor: const Color(0xFF1E1E1E),
         title: Text('Edit Role for ${user.username}', style: const TextStyle(color: Colors.white)),
         content: Column(
@@ -270,11 +270,14 @@ class _MembersScreenState extends State<MembersScreen> {
                   states.contains(MaterialState.selected) ? Colors.yellow : Colors.grey),
                 onChanged: (UserRole? value) async {
                   if (value != null) {
-                    Navigator.pop(context);
+                    Navigator.pop(dialogContext); // Close dialog using dialogContext
                     final success = await _roleDatabase.changeUserRole(user.email, value.value.toUpperCase());
+                    
+                    if (!mounted) return; // Check if MembersScreen is mounted
+
                     if (success) {
                       _loadData(); // Reload list
-                      ScaffoldMessenger.of(context).showSnackBar(
+                      ScaffoldMessenger.of(context).showSnackBar( // Use MembersScreen context
                         const SnackBar(content: Text('Role updated successfully')),
                       );
                     } else {
