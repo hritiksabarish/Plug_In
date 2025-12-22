@@ -89,21 +89,24 @@ class _MembersScreenState extends State<MembersScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     return Scaffold(
       drawer: const AppDrawer(currentRoute: '/members'),
       extendBodyBehindAppBar: true,
       appBar: AppBar(
-        title: const Text(
+        title: Text(
           'Members',
-          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+          style: TextStyle(color: isDark ? Colors.white : Colors.black, fontWeight: FontWeight.bold),
         ),
         elevation: 0,
         backgroundColor: Colors.transparent,
-        iconTheme: const IconThemeData(color: Colors.white),
+        iconTheme: IconThemeData(color: isDark ? Colors.white : Colors.black),
         actions: [
           IconButton(
-            icon: const Icon(Icons.refresh, color: Colors.yellow),
-            onPressed: _loadData,
+            icon: Icon(Icons.refresh, color: isDark ? Colors.yellow : Colors.blue), // Yellow/Blue refresh
+            onPressed: () => _loadData(), // Fixed lambda reference
           ),
         ],
         flexibleSpace: GlassContainer(
@@ -118,7 +121,7 @@ class _MembersScreenState extends State<MembersScreen> {
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: Theme.of(context).brightness == Brightness.dark
+            colors: isDark
                 ? [Colors.black, const Color(0xFF1E1E1E)]
                 : [const Color(0xFFF5F7FA), Colors.white],
           ),
@@ -126,7 +129,7 @@ class _MembersScreenState extends State<MembersScreen> {
         child: _isLoading
             ? const Center(child: CircularProgressIndicator(color: Colors.yellow))
             : _members.isEmpty
-                ? const Center(child: Text('No members found', style: TextStyle(color: Colors.grey)))
+                ? Center(child: Text('No members found', style: TextStyle(color: isDark ? Colors.grey : Colors.grey[600])))
                 : Column(
                     children: [
                       Padding(
@@ -139,6 +142,7 @@ class _MembersScreenState extends State<MembersScreen> {
                                 value: _members.length.toString(),
                                 icon: Icons.group,
                                 color: Colors.blueAccent,
+                                isDark: isDark,
                               ),
                             ),
                             const SizedBox(width: 16),
@@ -148,6 +152,7 @@ class _MembersScreenState extends State<MembersScreen> {
                                 value: '${_calculateAverageAttendance().toStringAsFixed(1)}%',
                                 icon: Icons.bar_chart,
                                 color: Colors.greenAccent,
+                                isDark: isDark,
                               ),
                             ),
                           ],
@@ -173,6 +178,7 @@ class _MembersScreenState extends State<MembersScreen> {
                                       role: member.role.displayName,
                                       attendance: attendancePercentage,
                                       avatarUrl: member.avatarUrl,
+                                      isDark: isDark,
                                       onEdit: (_currentUser?.role == UserRole.admin && member.username != 'admin')
                                           ? () => _showRoleDialog(member)
                                           : null,
@@ -201,6 +207,12 @@ class _MembersScreenState extends State<MembersScreen> {
     );
   }
 
+  // ... (keeping other methods same, skipping large blocks of code if possible but need class structure)
+  // Since I'm replacing build, I need to match everything or close bracket correctly.
+  // Wait, I am replacing from 'build' onwards. I need to keep valid structure.
+  
+  // Actually, I'll update the _StatCard and MemberCard classes first as they are clean targets.
+  // Then update build.
   bool _canDelete(UserLoginDetails targetUser) {
     if (_currentUser == null) return false;
     if (targetUser.username == 'admin') return false; // Protect root admin
@@ -225,14 +237,17 @@ class _MembersScreenState extends State<MembersScreen> {
   }
 
   Future<void> _confirmDelete(UserLoginDetails user) async {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     final confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: const Color(0xFF1E1E1E),
-        title: const Text('Confirm Deletion', style: TextStyle(color: Colors.white)),
+        backgroundColor: isDark ? const Color(0xFF1E1E1E) : Colors.white,
+        title: Text('Confirm Deletion', style: TextStyle(color: isDark ? Colors.white : Colors.black)),
         content: Text(
           'Are you sure you want to remove ${user.username}?\nThis action cannot be undone.', 
-          style: const TextStyle(color: Colors.grey),
+          style: TextStyle(color: isDark ? Colors.grey : Colors.grey[800]),
         ),
         actions: [
           TextButton(
@@ -267,22 +282,25 @@ class _MembersScreenState extends State<MembersScreen> {
   }
 
   void _showRoleDialog(UserLoginDetails user) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
     showDialog(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        backgroundColor: const Color(0xFF1E1E1E),
-        title: Text('Edit Role for ${user.username}', style: const TextStyle(color: Colors.white)),
+        backgroundColor: isDark ? const Color(0xFF1E1E1E) : Colors.white,
+        title: Text('Edit Role for ${user.username}', style: TextStyle(color: isDark ? Colors.white : Colors.black)),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: UserRole.values.where((r) => r != UserRole.guest).map((role) {
             return ListTile(
-              title: Text(role.displayName, style: const TextStyle(color: Colors.white)),
+              title: Text(role.displayName, style: TextStyle(color: isDark ? Colors.white : Colors.black)),
               leading: Radio<UserRole>(
                 value: role,
                 groupValue: user.role,
-                activeColor: Colors.yellow,
+                activeColor: isDark ? Colors.yellow : Colors.blue,
                 fillColor: MaterialStateProperty.resolveWith((states) => 
-                  states.contains(MaterialState.selected) ? Colors.yellow : Colors.grey),
+                  states.contains(MaterialState.selected) ? (isDark ? Colors.yellow : Colors.blue) : Colors.grey),
                 onChanged: (UserRole? value) async {
                   if (value != null) {
                     Navigator.pop(dialogContext); // Close dialog using dialogContext
@@ -316,12 +334,14 @@ class _StatCard extends StatelessWidget {
   final String value;
   final IconData icon;
   final Color color;
+  final bool isDark; // Added
 
   const _StatCard({
     required this.title,
     required this.value,
     required this.icon,
     required this.color,
+    required this.isDark, // Added
   });
 
   @override
@@ -329,15 +349,15 @@ class _StatCard extends StatelessWidget {
     return GlassContainer(
       padding: const EdgeInsets.all(16.0),
       borderRadius: BorderRadius.circular(16),
-      color: Colors.white,
+      color: isDark ? Colors.white : Colors.black, // Invert base color
       opacity: 0.05,
-      border: Border.all(color: Colors.white.withOpacity(0.1)),
+      border: Border.all(color: isDark ? Colors.white.withOpacity(0.1) : Colors.black.withOpacity(0.1)),
       child: Column(
         children: [
           Icon(icon, size: 32, color: color),
           const SizedBox(height: 8),
-          Text(value, style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.white)),
-          Text(title, style: TextStyle(fontSize: 14, color: Colors.grey.shade400)),
+          Text(value, style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: isDark ? Colors.white : Colors.black)),
+          Text(title, style: TextStyle(fontSize: 14, color: isDark ? Colors.grey.shade400 : Colors.grey.shade600)),
         ],
       ),
     );
@@ -352,6 +372,7 @@ class MemberCard extends StatelessWidget {
   final VoidCallback? onEdit;
   final VoidCallback? onDelete;
   final VoidCallback? onTap;
+  final bool isDark; // Added
 
   const MemberCard({
     super.key,
@@ -362,6 +383,7 @@ class MemberCard extends StatelessWidget {
     this.onEdit,
     this.onDelete,
     this.onTap,
+    required this.isDark, // Added
   });
 
   Color _getAttendanceColor(double percentage) {
@@ -379,42 +401,42 @@ class MemberCard extends StatelessWidget {
     return GlassContainer(
       margin: const EdgeInsets.only(bottom: 12),
       borderRadius: BorderRadius.circular(16),
-      color: Colors.white,
+      color: isDark ? Colors.white : Colors.black, // Invert base
       opacity: 0.05,
-      border: Border.all(color: Colors.white.withOpacity(0.05)),
+      border: Border.all(color: isDark ? Colors.white.withOpacity(0.05) : Colors.black.withOpacity(0.05)),
       child: ListTile(
         onTap: onTap,
         leading: CircleAvatar(
           radius: 24,
-          backgroundColor: Colors.yellow.withOpacity(0.2),
+          backgroundColor: isDark ? Colors.yellow.withOpacity(0.2) : Colors.blue.withOpacity(0.1),
           backgroundImage: (avatarUrl != null && avatarUrl!.isNotEmpty)
               ? (avatarUrl!.startsWith('http') 
                   ? NetworkImage(avatarUrl!) 
                   : MemoryImage(base64Decode(avatarUrl!.contains(',') ? avatarUrl!.split(',').last : avatarUrl!)) as ImageProvider)
               : null,
           child: (avatarUrl == null || avatarUrl!.isEmpty)
-              ? const Icon(
+              ? Icon(
                   Icons.person_outline,
                   size: 28,
-                  color: Colors.yellow,
+                  color: isDark ? Colors.yellow : Colors.blue,
                 )
               : null,
         ),
         contentPadding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
         title: Text(
           name,
-          style: const TextStyle(fontSize: 19, fontWeight: FontWeight.bold, color: Colors.white),
+          style: TextStyle(fontSize: 19, fontWeight: FontWeight.bold, color: isDark ? Colors.white : Colors.black),
         ),
         subtitle: Text(
           role,
-          style: TextStyle(fontSize: 15, color: Colors.grey.shade400),
+          style: TextStyle(fontSize: 15, color: isDark ? Colors.grey.shade400 : Colors.grey.shade700),
         ),
         trailing: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
             if (onEdit != null)
               IconButton(
-                icon: const Icon(Icons.edit_note, color: Colors.yellow),
+                icon: Icon(Icons.edit_note, color: isDark ? Colors.yellow : Colors.blue),
                 onPressed: onEdit,
               ),
             if (onDelete != null)
@@ -427,7 +449,7 @@ class MemberCard extends StatelessWidget {
               style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.bold,
-                color: _getAttendanceColor(attendance),
+                color: _getAttendanceColor(attendance), // Keep colorful status
               ),
             ),
           ],
