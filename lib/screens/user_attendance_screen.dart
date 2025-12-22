@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:app/services/role_database_service.dart';
 import 'package:app/widgets/glass_container.dart';
 import 'package:intl/intl.dart';
+import 'package:app/models/role.dart';
 
 class UserAttendanceScreen extends StatefulWidget {
   final String username;
@@ -25,12 +26,46 @@ class _UserAttendanceScreenState extends State<UserAttendanceScreen> {
 
   Future<void> _loadHistory() async {
     setState(() => _isLoading = true);
-    final history = await _roleDatabase.fetchUserAttendance(widget.username);
-    if (mounted) {
-      setState(() {
-        _attendanceHistory = history;
-        _isLoading = false;
-      });
+    
+    try {
+      // 1. Fetch target user to get createdAt
+      final allUsers = await _roleDatabase.getAllUsers();
+      // Handle case where widget.username could be email or username
+      var user = allUsers.firstWhere(
+        (u) => u.email == widget.username || u.username == widget.username,
+        orElse: () => UserLoginDetails(
+          username: widget.username, 
+          email: '', 
+          passwordHash: '', 
+          role: UserRole.member,
+          createdAt: DateTime(2000), // Fallback to very old date if not found
+        ),
+      );
+      
+      final joinDate = user.createdAt;
+
+      // 2. Fetch all raw attendance history
+      final history = await _roleDatabase.fetchUserAttendance(widget.username);
+      
+      // 3. Filter history based on joinDate
+      final filteredHistory = history.where((record) {
+        if (record['date'] == null) return false;
+        final recordDate = DateTime.parse(record['date']);
+        // Include events after joining (with 1 day buffer)
+        return recordDate.isAfter(joinDate.subtract(const Duration(days: 1)));
+      }).toList();
+
+      if (mounted) {
+        setState(() {
+          _attendanceHistory = filteredHistory;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      print('Error loading attendance history: $e');
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
     }
   }
 

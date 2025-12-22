@@ -433,7 +433,7 @@ class RoleBasedDatabaseService {
           passwordHash: '', 
           role: UserRoleExtension.fromString(json['role'] ?? 'MEMBER'),
           isActive: true,
-          createdAt: DateTime.now(), 
+          createdAt: json['createdAt'] != null ? DateTime.parse(json['createdAt']) : DateTime.now(), 
           lastLogin: DateTime.now(), 
           bio: json['bio'],
           avatarUrl: json['avatarUrl'],

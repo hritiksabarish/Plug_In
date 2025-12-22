@@ -60,32 +60,7 @@ class _MembersScreenState extends State<MembersScreen> {
     }
   }
 
-  double _calculateAttendance(String username) {
-    // Find the user object to get createdAt
-    final user = _members.firstWhere((u) => u.username == username, orElse: () => UserLoginDetails(username: username, email: '', passwordHash: '', role: UserRole.member));
-    final joinDate = user.createdAt;
 
-    int totalApplicable = 0;
-    int presentCount = 0;
-
-    for (var record in _attendanceRecords) {
-      if (record['date'] != null) {
-        final recordDate = DateTime.parse(record['date']);
-        // Only count records AFTER the user joined (with a small buffer for same-day joiners)
-        if (recordDate.isAfter(joinDate.subtract(const Duration(days: 1)))) {
-           totalApplicable++;
-           final presentIds = List<String>.from(record['presentUserIds'] ?? []);
-           // Ideally match by email/id, currently using username/email depending on storage
-           if (presentIds.contains(username) || presentIds.contains(user.email)) {
-             presentCount++;
-           }
-        }
-      }
-    }
-
-    if (totalApplicable == 0) return 0.0;
-    return (presentCount / totalApplicable) * 100.0;
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -165,7 +140,7 @@ class _MembersScreenState extends State<MembersScreen> {
                             itemCount: _members.length,
                             itemBuilder: (context, index) {
                               final member = _members[index];
-                              final attendancePercentage = _calculateAttendance(member.email);
+                              final attendancePercentage = _calculateAttendance(member);
 
                               return AnimationConfiguration.staggeredList(
                                 position: index,
@@ -227,11 +202,36 @@ class _MembersScreenState extends State<MembersScreen> {
     return false;
   }
 
+  double _calculateAttendance(UserLoginDetails user) {
+    final joinDate = user.createdAt;
+
+    int totalApplicable = 0;
+    int presentCount = 0;
+
+    for (var record in _attendanceRecords) {
+      if (record['date'] != null) {
+        final recordDate = DateTime.parse(record['date']);
+        // Only count records AFTER the user joined (with a small buffer for same-day joiners)
+        if (recordDate.isAfter(joinDate.subtract(const Duration(days: 1)))) {
+           totalApplicable++;
+           final presentIds = List<String>.from(record['presentUserIds'] ?? []);
+           // Match by username or email
+           if (presentIds.contains(user.username) || presentIds.contains(user.email)) {
+             presentCount++;
+           }
+        }
+      }
+    }
+
+    if (totalApplicable == 0) return 0.0;
+    return (presentCount / totalApplicable) * 100.0;
+  }
+
   double _calculateAverageAttendance() {
     if (_members.isEmpty) return 0.0;
     double total = 0;
     for (var member in _members) {
-      total += _calculateAttendance(member.username);
+      total += _calculateAttendance(member);
     }
     return total / _members.length;
   }
