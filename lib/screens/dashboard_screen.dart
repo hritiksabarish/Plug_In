@@ -13,6 +13,7 @@ import 'dart:convert'; // For base64Decode
 import 'dart:convert'; // For base64Decode
 import 'package:lottie/lottie.dart'; // Import Lottie
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:app/widgets/app_drawer.dart';
 
 // --- Assuming these screen imports exist in your project ---
 import 'package:app/models/role.dart';
@@ -315,49 +316,7 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
   ];
 
     return Scaffold(
-      drawer: Drawer(
-        backgroundColor: theme.scaffoldBackgroundColor,
-        child: ListView(
-          padding: EdgeInsets.zero,
-          children: <Widget>[
-            _buildDrawerHeader(context, theme, primaryColor, appBarTextColor, isDarkMode),
-            ListTile(
-              leading: Icon(Icons.home, color: isDarkMode ? Colors.white : Colors.black87),
-              title: const Text('Home'),
-              onTap: () {
-                Navigator.of(context).pop();
-                if (ModalRoute.of(context)?.settings.name != '/dashboard') {
-                   Navigator.of(context).pushReplacement(MaterialPageRoute(
-                     builder: (_) => const DashboardScreen(),
-                     settings: const RouteSettings(name: '/dashboard')
-                   ));
-                }
-              },
-            ),
-            const Divider(),
-            ...dashboardItems.map((item) {
-              return ListTile(
-                leading: SizedBox(width: 30, height: 30, child: item.drawerIcon),
-                title: Text(item.title),
-                onTap: () async {
-                  Navigator.of(context).pop();
-                  await Navigator.of(context).push(MaterialPageRoute(builder: (_) => item.destination));
-                  if (item.title == 'Announcements') {
-                    _loadUnreadAnnouncements();
-                  }
-                },
-              );
-            }).toList(),
-            ListTile(
-              leading: const Icon(Icons.logout, color: Colors.red),
-              title: const Text('Logout'),
-              onTap: () {
-                Navigator.of(context).pushNamedAndRemoveUntil('/login', (route) => false);
-              },
-            ),
-          ],
-        ),
-      ),
+      drawer: const AppDrawer(currentRoute: '/dashboard'),
       body: AnimationLimiter(
         child: CustomScrollView(
           physics: const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),

@@ -6,6 +6,8 @@ import 'package:app/widgets/glass_container.dart';
 import 'package:flutter_staggered_animations/flutter_staggered_animations.dart';
 import 'package:app/screens/user_attendance_screen.dart';
 
+import 'package:app/widgets/app_drawer.dart';
+
 class MembersScreen extends StatefulWidget {
   const MembersScreen({super.key});
 
@@ -78,6 +80,7 @@ class _MembersScreenState extends State<MembersScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      drawer: const AppDrawer(currentRoute: '/members'),
       extendBodyBehindAppBar: true,
       appBar: AppBar(
         title: const Text(
@@ -101,11 +104,13 @@ class _MembersScreenState extends State<MembersScreen> {
         ),
       ),
       body: Container(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: [Colors.black, Color(0xFF1E1E1E)],
+            colors: Theme.of(context).brightness == Brightness.dark
+                ? [Colors.black, const Color(0xFF1E1E1E)]
+                : [const Color(0xFFF5F7FA), Colors.white],
           ),
         ),
         child: _isLoading

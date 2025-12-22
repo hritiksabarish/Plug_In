@@ -11,6 +11,14 @@ import 'package:app/screens/permissions_screen.dart';
 import 'package:app/services/auth_service.dart';
 import 'package:app/services/role_database_service.dart';
 import 'package:app/widgets/auth_guard.dart';
+import 'package:app/screens/attendance_screen.dart';
+import 'package:app/screens/events_screen.dart';
+import 'package:app/screens/collaboration_screen.dart';
+import 'package:app/screens/announcements_screen.dart';
+import 'package:app/screens/members_screen.dart';
+import 'package:app/screens/calendar_screen.dart';
+import 'package:app/screens/membership_requests_screen.dart';
+import 'package:app/screens/settings_screen.dart';
 
 import 'dart:async';
 
@@ -88,8 +96,32 @@ class SlugNPlugApp extends StatelessWidget {
       case '/dashboard':
         page = const AuthGuard(child: DashboardScreen());
         break;
+      case '/attendance':
+        page = const AuthGuard(child: AttendanceScreen()); // Ensure this import exists
+        break;
+      case '/events':
+        page = const AuthGuard(child: EventsScreen()); // Ensure this import exists
+        break;
+      case '/collaboration':
+        page = const AuthGuard(child: CollaborationScreen());
+        break;
+      case '/announcements':
+        page = const AuthGuard(child: AnnouncementsScreen());
+        break;
+      case '/members':
+        page = const AuthGuard(child: MembersScreen());
+        break;
+      case '/calendar':
+        page = const AuthGuard(child: CalendarScreen());
+        break;
+      case '/join_requests':
+        page = const AuthGuard(child: MembershipRequestsScreen());
+        break;
       case '/roles':
         page = const AuthGuard(child: RoleManagementScreen());
+        break;
+      case '/settings':
+        page = const AuthGuard(child: SettingsScreen());
         break;
       case '/permissions':
         page = const AuthGuard(child: PermissionsScreen());
