@@ -146,18 +146,27 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
 
         // "Notification" simulation
         if (count > 0) {
-           ScaffoldMessenger.of(context).showSnackBar(
-             SnackBar(
-               content: Text('You have $count unread announcements!'),
-               action: SnackBarAction(
-                 label: 'VIEW',
-                 onPressed: () {
-                    Navigator.of(context).push(MaterialPageRoute(builder: (_) => const AnnouncementsScreen()));
-                 },
+             ScaffoldMessenger.of(context).showSnackBar(
+               SnackBar(
+                 content: Row(
+                   children: [
+                     Expanded(child: Text('You have $count unread announcements!')),
+                     GestureDetector(
+                       onTap: () => ScaffoldMessenger.of(context).hideCurrentSnackBar(),
+                       child: const Icon(Icons.close, color: Colors.white, size: 20),
+                     ),
+                   ],
+                 ),
+                 duration: const Duration(seconds: 5),
+                 action: SnackBarAction(
+                   label: 'VIEW',
+                   onPressed: () {
+                      Navigator.of(context).push(MaterialPageRoute(builder: (_) => const AnnouncementsScreen()));
+                   },
+                 ),
+                 behavior: SnackBarBehavior.floating,
                ),
-               behavior: SnackBarBehavior.floating,
-             ),
-           );
+             );
         }
       }
     }

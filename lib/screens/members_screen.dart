@@ -61,20 +61,30 @@ class _MembersScreenState extends State<MembersScreen> {
   }
 
   double _calculateAttendance(String username) {
-    if (_attendanceRecords.isEmpty) return 0.0;
-    
+    // Find the user object to get createdAt
+    final user = _members.firstWhere((u) => u.username == username, orElse: () => UserLoginDetails(username: username, email: '', passwordHash: '', role: UserRole.member));
+    final joinDate = user.createdAt;
+
+    int totalApplicable = 0;
     int presentCount = 0;
+
     for (var record in _attendanceRecords) {
-      final presentIds = List<String>.from(record['presentUserIds'] ?? []);
-      // Assuming username is used as ID for now, or we need to match by ID if available
-      // Since UserLoginDetails doesn't have ID, we use username. 
-      // Ideally backend should return ID and we use that.
-      if (presentIds.contains(username)) {
-        presentCount++;
+      if (record['date'] != null) {
+        final recordDate = DateTime.parse(record['date']);
+        // Only count records AFTER the user joined (with a small buffer for same-day joiners)
+        if (recordDate.isAfter(joinDate.subtract(const Duration(days: 1)))) {
+           totalApplicable++;
+           final presentIds = List<String>.from(record['presentUserIds'] ?? []);
+           // Ideally match by email/id, currently using username/email depending on storage
+           if (presentIds.contains(username) || presentIds.contains(user.email)) {
+             presentCount++;
+           }
+        }
       }
     }
-    
-    return (presentCount / _attendanceRecords.length) * 100.0;
+
+    if (totalApplicable == 0) return 0.0;
+    return (presentCount / totalApplicable) * 100.0;
   }
 
   @override

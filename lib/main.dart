@@ -36,6 +36,10 @@ Future<void> main() async {
       const Duration(seconds: 10),
       onTimeout: () => null, // Just proceed if it times out
     );
+
+    // Initialize Theme
+    await themeService.loadTheme();
+
     // await AuthService().createTemporaryUsers(); 
     
     final bool loggedIn = await AuthService().isLoggedIn();
