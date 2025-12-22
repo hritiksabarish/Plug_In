@@ -150,7 +150,6 @@ class _MembershipRequestsScreenState extends State<MembershipRequestsScreen> {
                                     icon: const Icon(Icons.close, color: Colors.red),
                                     label: const Text('Reject', style: TextStyle(color: Colors.red)),
                                     style: OutlinedButton.styleFrom(
-                                      theme: theme,
                                       side: const BorderSide(color: Colors.red),
                                     ),
                                   ),
