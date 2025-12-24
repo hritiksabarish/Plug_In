@@ -10,6 +10,17 @@ class RoleBasedDatabaseService {
   static final RoleBasedDatabaseService _instance =
   RoleBasedDatabaseService._internal();
 
+  static DateTime parseDate(dynamic dateValue) {
+    if (dateValue == null) return DateTime.now();
+    try {
+
+      return DateTime.parse(dateValue.toString());
+    } catch (e) {
+      print('Error parsing date: $e');
+      return DateTime.now();
+    }
+  }
+
   factory RoleBasedDatabaseService() {
     return _instance;
   }
